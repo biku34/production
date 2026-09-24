@@ -89,7 +89,7 @@ function Products() {
           )[0];
           return (
             <div key={p._id} className="card p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="font-semibold">{p.name}</div>
                   <div className="text-xs text-ink-500">{p.sku}</div>
@@ -251,37 +251,54 @@ function SimpleTable({
   rows: any[];
   cols: [string, (r: any) => React.ReactNode][];
 }) {
+  if (rows.length === 0) {
+    return (
+      <div className="card p-8 text-center text-sm text-ink-500">
+        No records.
+      </div>
+    );
+  }
   return (
-    <div className="card overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-ink-100/50">
-          <tr>
-            {cols.map(([h]) => (
-              <th key={h} className="th">
-                {h}
-              </th>
+    <>
+      {/* Mobile: one card per row, label:value pairs */}
+      <div className="space-y-2 md:hidden">
+        {rows.map((r, i) => (
+          <div key={r._id || i} className="card space-y-1.5 p-3">
+            {cols.map(([h, fn]) => (
+              <div key={h} className="flex justify-between gap-3 text-sm">
+                <span className="shrink-0 text-ink-500">{h}</span>
+                <span className="text-right text-ink-900">{fn(r)}</span>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r._id || i} className="hover:bg-ink-100/40">
-              {cols.map(([h, fn]) => (
-                <td key={h} className="td">
-                  {fn(r)}
-                </td>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="card hidden overflow-hidden md:block">
+        <table className="w-full">
+          <thead className="bg-ink-100/50">
+            <tr>
+              {cols.map(([h]) => (
+                <th key={h} className="th">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td className="td text-center text-ink-500 py-8" colSpan={cols.length}>
-                No records.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r._id || i} className="hover:bg-ink-100/40">
+                {cols.map(([h, fn]) => (
+                  <td key={h} className="td">
+                    {fn(r)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

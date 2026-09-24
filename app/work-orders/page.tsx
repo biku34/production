@@ -8,7 +8,12 @@ import { DataGate } from "@/components/DataGate";
 import { StatusBadge, DeliveryBadge, PriorityBadge } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
-import { WO_STATUSES, WO_STATUS_LABELS, type WoStatus } from "@/lib/domain";
+import {
+  WO_STATUSES,
+  WO_STATUS_LABELS,
+  deliveryFlag,
+  type WoStatus,
+} from "@/lib/domain";
 
 interface Wo {
   _id: string;
@@ -72,7 +77,46 @@ export default function WorkOrdersPage() {
       </div>
 
       <DataGate loading={loading} error={error} onReload={reload}>
-        <div className="card overflow-hidden">
+        {/* Mobile: stacked cards */}
+        <div className="space-y-2 md:hidden">
+          {(data || []).map((w) => (
+            <Link
+              key={w._id}
+              href={`/work-orders/${w._id}`}
+              className="card block p-3 active:bg-ink-50"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-brand-700">{w.woNo}</span>
+                <StatusBadge status={w.status} />
+              </div>
+              <div className="mt-1 text-sm text-ink-900">{w.productName}</div>
+              <div className="text-xs text-ink-500">
+                {w.sku} · {w.customerRef}
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-sm font-medium tabular-nums">
+                  {fmtNum(w.targetQty)} {w.unit}
+                </span>
+                <span className="text-xs text-ink-500">{fmtDate(w.dueDate)}</span>
+              </div>
+              {(w.priority !== "Normal" ||
+                deliveryFlag(w.dueDate) !== "None") && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <PriorityBadge priority={w.priority} />
+                  <DeliveryBadge dueDate={w.dueDate} />
+                </div>
+              )}
+            </Link>
+          ))}
+          {(data || []).length === 0 && (
+            <div className="card p-8 text-center text-sm text-ink-500">
+              No work orders match.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="card hidden overflow-hidden md:block">
           <table className="w-full">
             <thead className="bg-ink-100/50">
               <tr>

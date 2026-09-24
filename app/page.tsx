@@ -87,17 +87,17 @@ export default function DashboardPage() {
                       ? (n / data.totalWo) * 100
                       : 0;
                     return (
-                      <div key={s} className="flex items-center gap-3">
-                        <div className="w-40 text-sm text-ink-700 shrink-0">
+                      <div key={s} className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-28 shrink-0 text-xs text-ink-700 sm:w-40 sm:text-sm">
                           {WO_STATUS_LABELS[s as WoStatus]}
                         </div>
-                        <div className="flex-1 h-2 rounded bg-ink-100 overflow-hidden">
+                        <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-ink-100">
                           <div
                             className="h-full bg-brand-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <div className="w-8 text-right text-sm font-medium">
+                        <div className="w-6 text-right text-sm font-medium tabular-nums sm:w-8">
                           {n}
                         </div>
                       </div>
@@ -120,37 +120,72 @@ export default function DashboardPage() {
                 {data.lossByStage.length === 0 ? (
                   <p className="text-sm text-ink-500">No stage entries yet.</p>
                 ) : (
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="th">Stage</th>
-                        <th className="th text-right">Avg loss %</th>
-                        <th className="th text-right">Flagged</th>
-                        <th className="th text-right">Entries</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <>
+                    {/* Mobile: compact rows */}
+                    <div className="divide-y divide-ink-100 sm:hidden">
                       {data.lossByStage.map((l) => (
-                        <tr key={l._id}>
-                          <td className="td">
+                        <div
+                          key={l._id}
+                          className="flex items-center justify-between gap-2 py-2"
+                        >
+                          <span className="text-sm text-ink-800">
                             {STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] ||
                               l._id}
-                          </td>
-                          <td className="td text-right">
-                            {l.avgLossPct?.toFixed(1)}%
-                          </td>
-                          <td
-                            className={`td text-right ${
-                              l.flagged ? "text-red-600 font-semibold" : ""
-                            }`}
-                          >
-                            {l.flagged}
-                          </td>
-                          <td className="td text-right">{l.entries}</td>
-                        </tr>
+                          </span>
+                          <div className="flex items-center gap-3 text-xs tabular-nums">
+                            <span className="text-ink-600">
+                              {l.avgLossPct?.toFixed(1)}%
+                            </span>
+                            <span
+                              className={
+                                l.flagged
+                                  ? "font-semibold text-red-600"
+                                  : "text-ink-400"
+                              }
+                            >
+                              {l.flagged} flagged
+                            </span>
+                            <span className="text-ink-400">
+                              {l.entries} ent.
+                            </span>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+
+                    {/* Desktop: table */}
+                    <table className="hidden w-full sm:table">
+                      <thead>
+                        <tr>
+                          <th className="th">Stage</th>
+                          <th className="th text-right">Avg loss %</th>
+                          <th className="th text-right">Flagged</th>
+                          <th className="th text-right">Entries</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.lossByStage.map((l) => (
+                          <tr key={l._id}>
+                            <td className="td">
+                              {STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] ||
+                                l._id}
+                            </td>
+                            <td className="td text-right">
+                              {l.avgLossPct?.toFixed(1)}%
+                            </td>
+                            <td
+                              className={`td text-right ${
+                                l.flagged ? "text-red-600 font-semibold" : ""
+                              }`}
+                            >
+                              {l.flagged}
+                            </td>
+                            <td className="td text-right">{l.entries}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   {data.rollsByGrade.map((g) => (
