@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { postJSON } from "@/lib/client";
 import { Modal, Field } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import { GRADES, STAGES, STAGE_LABELS } from "@/lib/domain";
 
 interface Defect {
@@ -212,12 +213,13 @@ export function QcForm({
               />
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="btn-ghost btn-sm !px-2"
                 onClick={() =>
                   setDefects((ds) => ds.filter((_, idx) => idx !== i))
                 }
+                aria-label="Remove defect"
               >
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
           ))}

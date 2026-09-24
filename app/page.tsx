@@ -5,6 +5,7 @@ import { getJSON } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { Stat } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import {
   WO_STATUSES,
   WO_STATUS_LABELS,
@@ -42,7 +43,8 @@ export default function DashboardPage() {
           </p>
         </div>
         <Link href="/work-orders/new" className="btn-primary">
-          + New Work Order
+          <Icon name="plus" size={16} />
+          New Work Order
         </Link>
       </div>
 
@@ -104,9 +106,10 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   href="/job-board"
-                  className="mt-4 inline-block text-sm text-brand-700 hover:underline"
+                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
                 >
-                  Open Job Board →
+                  Open Job Board
+                  <Icon name="chevronRight" size={14} />
                 </Link>
               </div>
 

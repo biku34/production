@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { postJSON } from "@/lib/client";
 import { Modal, Field } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import { GRADES } from "@/lib/domain";
 
 interface RollRow {
@@ -101,10 +102,11 @@ export function PackForm({
               {rows.length > 1 && (
                 <button
                   type="button"
-                  className="btn-ghost btn-sm"
+                  className="btn-ghost btn-sm !px-2"
                   onClick={() => removeRow(i)}
+                  aria-label="Remove roll"
                 >
-                  ✕
+                  <Icon name="close" size={14} />
                 </button>
               )}
             </div>

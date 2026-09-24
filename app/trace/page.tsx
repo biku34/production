@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { getJSON, fmtDate, fmtNum } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 import { STAGE_LABELS } from "@/lib/domain";
 
 export default function TracePage() {
@@ -78,9 +79,10 @@ export default function TracePage() {
               <Row k="Due" v={fmtDate(trace.workOrder.dueDate)} />
               <Link
                 href={`/work-orders/${trace.workOrder._id}`}
-                className="text-sm text-brand-700 hover:underline"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
               >
-                Open work order →
+                Open work order
+                <Icon name="chevronRight" size={14} />
               </Link>
             </TraceCard>
           )}

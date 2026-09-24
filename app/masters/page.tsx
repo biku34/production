@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getJSON, fmtNum, fmtDate, postJSON } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
+import { Icon } from "@/components/Icon";
 import { ROLE_LABELS, STAGE_LABELS, type Role } from "@/lib/domain";
 
 const TABS = [
@@ -45,7 +46,8 @@ export default function MastersPage() {
             }
           }}
         >
-          {seeding ? "Seeding…" : "↻ Reseed demo data"}
+          <Icon name="refresh" size={15} />
+          {seeding ? "Seeding…" : "Reseed demo data"}
         </button>
       </div>
 

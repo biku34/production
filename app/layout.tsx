@@ -1,7 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Shell from "@/components/Shell";
 import ServiceWorker from "@/components/ServiceWorker";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Fabric Plant — Production Module",
@@ -25,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b7d54",
+  themeColor: "#18181b",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -38,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <Shell>{children}</Shell>
         <ServiceWorker />

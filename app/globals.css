@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #f7f7f8;
+  --surface: #ffffff;
 }
 
 html,
@@ -11,45 +12,75 @@ body {
   padding: 0;
   margin: 0;
   background: var(--bg);
-  color: #0f172a;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  color: #18181b;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
 }
 
+::selection {
+  background: #d9efea;
+}
+
+@layer base {
+  h1 {
+    letter-spacing: -0.02em;
+  }
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+}
+
 @layer components {
   .card {
-    @apply bg-white rounded-xl border border-ink-300/60 shadow-sm;
+    @apply bg-white rounded-xl border border-ink-200 shadow-card;
   }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors select-none;
   }
+  /* Primary = confident near-black */
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50;
+    @apply btn bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950 disabled:opacity-40 disabled:pointer-events-none;
+  }
+  /* Accent = teal, used for a few key affirmative actions */
+  .btn-accent {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40;
   }
   .btn-ghost {
-    @apply btn border border-ink-300 bg-white text-ink-700 hover:bg-ink-100;
+    @apply btn border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 hover:text-ink-900 disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-sm {
     @apply px-2.5 py-1.5 text-xs;
   }
+
   .input {
-    @apply w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none transition-shadow placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
   }
   .label {
-    @apply block text-xs font-medium text-ink-500 mb-1;
+    @apply block text-[11px] font-medium uppercase tracking-wide text-ink-500 mb-1;
   }
+
   .badge {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
   }
+
+  /* Tables */
   .th {
-    @apply text-left text-xs font-semibold uppercase tracking-wide text-ink-500 px-3 py-2;
+    @apply text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500 px-3 py-2.5;
   }
   .td {
-    @apply px-3 py-2 text-sm text-ink-900 border-t border-ink-100;
+    @apply px-3 py-2.5 text-sm text-ink-800 border-t border-ink-100;
+  }
+
+  .section-title {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-ink-500;
   }
 }
 
@@ -67,4 +98,3 @@ body {
     width: 100%;
   }
 }
-

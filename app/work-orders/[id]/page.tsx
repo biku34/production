@@ -11,6 +11,7 @@ import {
   PriorityBadge,
   EmptyState,
 } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import { useRole } from "@/components/RoleContext";
 import {
   WO_TRANSITIONS,
@@ -92,7 +93,8 @@ export default function WorkOrderDetailPage() {
                         disabled={busy}
                         onClick={() => transition(to)}
                       >
-                        → {WO_STATUS_LABELS[to]}
+                        <Icon name="chevronRight" size={14} />
+                        {WO_STATUS_LABELS[to]}
                       </button>
                     ))}
                   </div>
@@ -135,7 +137,7 @@ export default function WorkOrderDetailPage() {
                           {STAGE_LABELS[r.stage as keyof typeof STAGE_LABELS]}
                         </span>
                         {i < wo.routing.length - 1 && (
-                          <span className="text-ink-400">→</span>
+                          <Icon name="chevronRight" size={13} className="text-ink-300" />
                         )}
                       </span>
                     ))}
@@ -146,24 +148,23 @@ export default function WorkOrderDetailPage() {
 
             {/* Action bar */}
             <div className="flex flex-wrap gap-2">
-              <button className="btn-primary btn-sm" onClick={() => setModal("issue")}>
-                + Material Issue
-              </button>
-              <button className="btn-primary btn-sm" onClick={() => setModal("stage")}>
-                + Stage Entry
-              </button>
-              <button className="btn-primary btn-sm" onClick={() => setModal("lot")}>
-                + Lot / Shade
-              </button>
-              <button className="btn-primary btn-sm" onClick={() => setModal("qc")}>
-                + QC / Inspection
-              </button>
-              <button className="btn-primary btn-sm" onClick={() => setModal("pack")}>
-                + Pack Rolls
-              </button>
-              <button className="btn-primary btn-sm" onClick={() => setModal("jobwork")}>
-                + Job-work Dispatch
-              </button>
+              {[
+                { k: "issue", label: "Material Issue" },
+                { k: "stage", label: "Stage Entry" },
+                { k: "lot", label: "Lot / Shade" },
+                { k: "qc", label: "QC / Inspection" },
+                { k: "pack", label: "Pack Rolls" },
+                { k: "jobwork", label: "Job-work Dispatch" },
+              ].map((a) => (
+                <button
+                  key={a.k}
+                  className="btn-ghost btn-sm"
+                  onClick={() => setModal(a.k)}
+                >
+                  <Icon name="plus" size={14} className="text-ink-400" />
+                  {a.label}
+                </button>
+              ))}
             </div>
 
             {/* Panels */}
@@ -201,8 +202,10 @@ export default function WorkOrderDetailPage() {
                             }`}
                             title={s.lossFlagged ? "Loss beyond routing standard %" : ""}
                           >
-                            {s.lossPct?.toFixed(1)}%
-                            {s.lossFlagged ? " ⚠" : ""}
+                            <span className="inline-flex items-center justify-end gap-1">
+                              {s.lossPct?.toFixed(1)}%
+                              {s.lossFlagged && <Icon name="warning" size={13} />}
+                            </span>
                           </td>
                           <td className="td text-xs">{s.machineName || "—"}</td>
                         </tr>

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { getJSON, postJSON } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { Modal, Field } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import { UNITS, STAGE_LABELS, type Stage } from "@/lib/domain";
 
 export function StageEntryForm({
@@ -238,15 +239,20 @@ export function StageEntryForm({
 
         {preview && (
           <div
-            className={`rounded-lg px-3 py-2 text-sm ${
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
               preview.pct > preview.std
-                ? "bg-red-50 text-red-700 border border-red-200"
-                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-brand-200 bg-brand-50 text-brand-700"
             }`}
           >
-            Derived loss ≈ <b>{preview.pct.toFixed(1)}%</b> vs standard{" "}
-            {preview.std}%{" "}
-            {preview.pct > preview.std ? "→ will be flagged ⚠" : "→ within limit"}
+            {preview.pct > preview.std && <Icon name="warning" size={15} />}
+            <span>
+              Derived loss <b>{preview.pct.toFixed(1)}%</b> vs standard{" "}
+              {preview.std}% —{" "}
+              {preview.pct > preview.std
+                ? "exceeds standard, will be flagged"
+                : "within standard"}
+            </span>
           </div>
         )}
 

@@ -6,6 +6,7 @@ import { getJSON, fmtDate, fmtNum } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { StatusBadge, DeliveryBadge, PriorityBadge } from "@/components/ui";
+import { Icon } from "@/components/Icon";
 import { WO_STATUSES, WO_STATUS_LABELS, type WoStatus } from "@/lib/domain";
 
 interface Wo {
@@ -43,7 +44,8 @@ export default function WorkOrdersPage() {
           </p>
         </div>
         <Link href="/work-orders/new" className="btn-primary">
-          + New Work Order
+          <Icon name="plus" size={16} />
+          New Work Order
         </Link>
       </div>
 
