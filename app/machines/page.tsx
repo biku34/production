@@ -3,12 +3,14 @@
 import { getJSON, fmtDate } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
+import { PageHeader } from "@/components/PageHeader";
 import { STAGE_LABELS } from "@/lib/domain";
 
 export default function MachinesPage() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/machines?withQueue=1"),
-    []
+    [],
+    { cacheKey: "/api/machines?withQueue=1" }
   );
 
   const statusStyle: Record<string, string> = {
@@ -20,12 +22,10 @@ export default function MachinesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Machines &amp; Lines</h1>
-        <p className="text-sm text-ink-500">
-          Capacity, status and queue per machine — “what’s queued on Loom 3”.
-        </p>
-      </div>
+      <PageHeader
+        title="Machines & Lines"
+        subtitle="Capacity, status and queue per machine — “what’s queued on Loom 3”."
+      />
 
       <DataGate loading={loading} error={error} onReload={reload}>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

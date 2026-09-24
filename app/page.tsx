@@ -5,6 +5,7 @@ import { getJSON } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { Stat } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import {
   WO_STATUSES,
@@ -30,23 +31,22 @@ interface Wip {
 export default function DashboardPage() {
   const { data, error, loading, reload } = useAsync<Wip>(
     () => getJSON("/api/reports/wip"),
-    []
+    [],
+    { cacheKey: "/api/reports/wip" }
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Production Dashboard</h1>
-          <p className="text-sm text-ink-500">
-            What needs to be made, where it is, and whether it’s on schedule.
-          </p>
-        </div>
-        <Link href="/work-orders/new" className="btn-primary">
-          <Icon name="plus" size={16} />
-          New Work Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Production Dashboard"
+        subtitle="What needs to be made, where it is, and whether it’s on schedule."
+        action={
+          <Link href="/work-orders/new" className="btn-primary">
+            <Icon name="plus" size={16} />
+            New Work Order
+          </Link>
+        }
+      />
 
       <DataGate loading={loading} error={error} onReload={reload}>
         {data && (

@@ -14,8 +14,12 @@ export default function NewWorkOrderPage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const products = useAsync<any[]>(() => getJSON("/api/products"), []);
-  const orders = useAsync<any[]>(() => getJSON("/api/sales-orders"), []);
+  const products = useAsync<any[]>(() => getJSON("/api/products"), [], {
+    cacheKey: "/api/products",
+  });
+  const orders = useAsync<any[]>(() => getJSON("/api/sales-orders"), [], {
+    cacheKey: "/api/sales-orders",
+  });
 
   const [form, setForm] = useState({
     salesOrderId: "",
@@ -63,8 +67,10 @@ export default function NewWorkOrderPage() {
   return (
     <div className="max-w-2xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">New Work Order</h1>
-        <p className="text-sm text-ink-500">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          New Work Order
+        </h1>
+        <p className="mt-1 text-sm text-ink-500">
           From an accepted sales order (specs are snapshotted — AC-1) or as a
           stock build.
         </p>

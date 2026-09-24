@@ -142,7 +142,7 @@ export function StageEntryForm({
           </Field>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Qty in">
             <input
               className="input"
@@ -185,7 +185,7 @@ export function StageEntryForm({
           </Field>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Field label="Wastage qty">
             <input
               className="input"

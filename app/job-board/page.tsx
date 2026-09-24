@@ -6,6 +6,7 @@ import { getJSON, postJSON, fmtDate } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { DeliveryBadge, PriorityBadge } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import { useRole } from "@/components/RoleContext";
 import {
@@ -33,7 +34,8 @@ export default function JobBoardPage() {
   const { role, stage } = useRole();
   const { data, error, loading, reload } = useAsync<Wo[]>(
     () => getJSON("/api/work-orders"),
-    []
+    [],
+    { cacheKey: "/api/work-orders" }
   );
   const [dragId, setDragId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -69,20 +71,20 @@ export default function JobBoardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Production Job Board</h1>
-          <p className="text-sm text-ink-500">
-            {scopedStatus
-              ? `Scoped to ${STAGE_LABELS[stage!]} supervisor — showing “${WO_STATUS_LABELS[scopedStatus]}” only.`
-              : "Kanban across the fabric production lifecycle. Drag a card to advance it."}
-          </p>
-        </div>
-        <Link href="/work-orders/new" className="btn-primary">
-          <Icon name="plus" size={16} />
-          New Work Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Production Job Board"
+        subtitle={
+          scopedStatus
+            ? `Scoped to ${STAGE_LABELS[stage!]} supervisor — showing “${WO_STATUS_LABELS[scopedStatus]}” only.`
+            : "Kanban across the fabric production lifecycle. Drag a card to advance it."
+        }
+        action={
+          <Link href="/work-orders/new" className="btn-primary">
+            <Icon name="plus" size={16} />
+            New Work Order
+          </Link>
+        }
+      />
 
       {toast && (
         <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">

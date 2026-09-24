@@ -6,6 +6,7 @@ import { getJSON, fmtDate, fmtNum } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { StatusBadge, DeliveryBadge, PriorityBadge } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import { WO_STATUSES, WO_STATUS_LABELS, type WoStatus } from "@/lib/domain";
 
@@ -29,29 +30,29 @@ export default function WorkOrdersPage() {
   if (status) params.set("status", status);
   if (q) params.set("q", q);
 
+  const listUrl = `/api/work-orders?${params.toString()}`;
   const { data, error, loading, reload } = useAsync<Wo[]>(
-    () => getJSON(`/api/work-orders?${params.toString()}`),
-    [status, q]
+    () => getJSON(listUrl),
+    [status, q],
+    { cacheKey: listUrl }
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Work Orders</h1>
-          <p className="text-sm text-ink-500">
-            List with filters — same grid conventions as the reference app.
-          </p>
-        </div>
-        <Link href="/work-orders/new" className="btn-primary">
-          <Icon name="plus" size={16} />
-          New Work Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Work Orders"
+        subtitle="List with filters — same grid conventions as the reference app."
+        action={
+          <Link href="/work-orders/new" className="btn-primary">
+            <Icon name="plus" size={16} />
+            New Work Order
+          </Link>
+        }
+      />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <input
-          className="input !w-64"
+          className="input sm:!w-64"
           placeholder="Search WO no, product, customer…"
           value={q}
           onChange={(e) => setQ(e.target.value)}

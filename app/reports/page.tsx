@@ -4,20 +4,23 @@ import { getJSON, fmtNum } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import { Stat } from "@/components/ui";
+import { PageHeader } from "@/components/PageHeader";
 import { STAGE_LABELS } from "@/lib/domain";
 
 export default function ReportsPage() {
-  const wip = useAsync<any>(() => getJSON("/api/reports/wip"), []);
-  const jobwork = useAsync<any[]>(() => getJSON("/api/jobwork"), []);
+  const wip = useAsync<any>(() => getJSON("/api/reports/wip"), [], {
+    cacheKey: "/api/reports/wip",
+  });
+  const jobwork = useAsync<any[]>(() => getJSON("/api/jobwork"), [], {
+    cacheKey: "/api/jobwork",
+  });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Reports &amp; Dashboards</h1>
-        <p className="text-sm text-ink-500">
-          Delivery performance, wastage variance, job-work register (SRS §9).
-        </p>
-      </div>
+      <PageHeader
+        title="Reports & Dashboards"
+        subtitle="Delivery performance, wastage variance, job-work register (SRS §9)."
+      />
 
       <DataGate
         loading={wip.loading}

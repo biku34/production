@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getJSON, fmtNum, fmtDate, postJSON } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
+import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import { ROLE_LABELS, STAGE_LABELS, type Role } from "@/lib/domain";
 
@@ -22,41 +23,38 @@ export default function MastersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Masters</h1>
-          <p className="text-sm text-ink-500">
-            Configurable masters — products (BOM + routing), materials, vendors,
-            users, sales orders.
-          </p>
-        </div>
-        <button
-          className="btn-ghost"
-          disabled={seeding}
-          onClick={async () => {
-            if (!confirm("Wipe and reseed demo data?")) return;
-            setSeeding(true);
-            try {
-              await postJSON("/api/seed", {});
-              location.reload();
-            } catch (e: any) {
-              alert(e?.message);
-            } finally {
-              setSeeding(false);
-            }
-          }}
-        >
-          <Icon name="refresh" size={15} />
-          {seeding ? "Seeding…" : "Reseed demo data"}
-        </button>
-      </div>
+      <PageHeader
+        title="Masters"
+        subtitle="Configurable masters — products (BOM + routing), materials, vendors, users, sales orders."
+        action={
+          <button
+            className="btn-ghost"
+            disabled={seeding}
+            onClick={async () => {
+              if (!confirm("Wipe and reseed demo data?")) return;
+              setSeeding(true);
+              try {
+                await postJSON("/api/seed", {});
+                location.reload();
+              } catch (e: any) {
+                alert(e?.message);
+              } finally {
+                setSeeding(false);
+              }
+            }}
+          >
+            <Icon name="refresh" size={15} />
+            {seeding ? "Seeding…" : "Reseed demo data"}
+          </button>
+        }
+      />
 
-      <div className="flex gap-1 border-b border-ink-200">
+      <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-ink-200 px-4 sm:mx-0 sm:px-0">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
               tab === t
                 ? "border-brand-600 text-brand-700"
                 : "border-transparent text-ink-500 hover:text-ink-700"
@@ -79,7 +77,8 @@ export default function MastersPage() {
 function Products() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/products"),
-    []
+    [],
+    { cacheKey: "/api/products" }
   );
   return (
     <DataGate loading={loading} error={error} onReload={reload}>
@@ -152,7 +151,8 @@ function Products() {
 function Materials() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/materials"),
-    []
+    [],
+    { cacheKey: "/api/materials" }
   );
   return (
     <DataGate loading={loading} error={error} onReload={reload}>
@@ -174,7 +174,8 @@ function Materials() {
 function Vendors() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/vendors"),
-    []
+    [],
+    { cacheKey: "/api/vendors" }
   );
   return (
     <DataGate loading={loading} error={error} onReload={reload}>
@@ -195,7 +196,8 @@ function Vendors() {
 function Users() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/users"),
-    []
+    [],
+    { cacheKey: "/api/users" }
   );
   return (
     <DataGate loading={loading} error={error} onReload={reload}>
@@ -221,7 +223,8 @@ function Users() {
 function SalesOrders() {
   const { data, error, loading, reload } = useAsync<any[]>(
     () => getJSON("/api/sales-orders"),
-    []
+    [],
+    { cacheKey: "/api/sales-orders" }
   );
   return (
     <DataGate loading={loading} error={error} onReload={reload}>

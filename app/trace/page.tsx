@@ -30,8 +30,10 @@ export default function TracePage() {
   return (
     <div className="space-y-5 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold">Roll Traceability</h1>
-        <p className="text-sm text-ink-500">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          Roll Traceability
+        </h1>
+        <p className="mt-1 text-sm text-ink-500">
           From a finished roll, trace back through lot, shade, stages, materials
           and job-work vendors (AC-4). Try{" "}
           <span className="font-mono">ROLL-00001</span>.
@@ -40,7 +42,7 @@ export default function TracePage() {
 
       <form onSubmit={run} className="flex gap-2">
         <input
-          className="input !w-64"
+          className="input min-w-0 flex-1 sm:!w-64 sm:flex-none"
           placeholder="Roll number, e.g. ROLL-00001"
           value={rollNo}
           onChange={(e) => setRollNo(e.target.value)}

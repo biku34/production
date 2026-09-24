@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
+import { prefetch } from "@/components/useAsync";
+import { getJSON } from "@/lib/client";
 import {
   ROLES,
   ROLE_LABELS,
@@ -25,6 +27,24 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 ];
 
 const MOBILE_PRIMARY = ["/", "/job-board", "/work-orders", "/reports"];
+
+// Primary data endpoint(s) each route needs — warmed on hover so the page
+// renders from cache instead of waiting on the DB.
+const PREFETCH: Record<string, string[]> = {
+  "/": ["/api/reports/wip"],
+  "/job-board": ["/api/work-orders"],
+  "/work-orders": ["/api/work-orders?"],
+  "/machines": ["/api/machines?withQueue=1"],
+  "/reports": ["/api/reports/wip", "/api/jobwork"],
+  "/masters": ["/api/products"],
+  "/trace": [],
+};
+
+function warm(href: string) {
+  for (const key of PREFETCH[href] || []) {
+    prefetch(key, () => getJSON(key));
+  }
+}
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -100,6 +120,8 @@ function Sidebar() {
             <Link
               key={n.href}
               href={n.href}
+              onMouseEnter={() => warm(n.href)}
+              onFocus={() => warm(n.href)}
               className={`group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-ink-100 text-ink-900"
@@ -191,6 +213,7 @@ function MobileNav() {
             <Link
               key={n.href}
               href={n.href}
+              onTouchStart={() => warm(n.href)}
               className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium ${
                 active ? "text-ink-900" : "text-ink-500"
               }`}
