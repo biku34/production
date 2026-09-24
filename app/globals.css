@@ -85,16 +85,17 @@ body {
 }
 
 /* Mobile: let wide data tables scroll horizontally inside their card instead of
-   being clipped. Standard responsive-table pattern; desktop is untouched. */
+   being clipped. Standard responsive-table pattern; desktop is untouched.
+   `:not(.hidden)` so it never overrides a table hidden behind a mobile card view. */
 @media (max-width: 767px) {
-  .card table {
+  .card table:not(.hidden) {
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
   }
-  .card table thead,
-  .card table tbody {
+  .card table:not(.hidden) thead,
+  .card table:not(.hidden) tbody {
     width: 100%;
   }
 }

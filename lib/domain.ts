@@ -25,6 +25,17 @@ export const WO_STATUS_LABELS: Record<WoStatus, string> = {
   Closed: "Closed",
 };
 
+/** Hex colors per status, used by charts (aligned with the badge hues). */
+export const WO_STATUS_COLORS: Record<WoStatus, string> = {
+  Created: "#94a3b8",
+  Sampling: "#8b5cf6",
+  PreProductionReview: "#f59e0b",
+  InProduction: "#3b82f6",
+  InInspection: "#d946ef",
+  PackingDispatch: "#06b6d4",
+  Closed: "#1c6f63",
+};
+
 /** Reference-app lineage (SRS §3.2 / Appendix B) — shown as tooltip. */
 export const WO_STATUS_REF: Record<WoStatus, string> = {
   Created: "Ref: New Order",

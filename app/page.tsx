@@ -7,9 +7,11 @@ import { DataGate } from "@/components/DataGate";
 import { Stat } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
+import { Donut, BarList, StackBar, LegendRow, type Slice } from "@/components/charts";
 import {
   WO_STATUSES,
   WO_STATUS_LABELS,
+  WO_STATUS_COLORS,
   STAGE_LABELS,
   type WoStatus,
 } from "@/lib/domain";
@@ -27,6 +29,13 @@ interface Wip {
   }[];
   rollsByGrade: { _id: string; count: number; meters: number }[];
 }
+
+const GRADE_COLORS: Record<string, string> = {
+  A: "#1c6f63",
+  B: "#f59e0b",
+  C: "#f97316",
+  Reject: "#dc2626",
+};
 
 export default function DashboardPage() {
   const { data, error, loading, reload } = useAsync<Wip>(
@@ -49,159 +58,134 @@ export default function DashboardPage() {
       />
 
       <DataGate loading={loading} error={error} onReload={reload}>
-        {data && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Stat label="Total Work Orders" value={data.totalWo} />
-              <Stat
-                label="Overdue"
-                value={data.delivery.overdue}
-                tone={data.delivery.overdue ? "danger" : "default"}
-                hint="not yet closed"
-              />
-              <Stat
-                label="Delivery Today"
-                value={data.delivery.today}
-                tone={data.delivery.today ? "warn" : "default"}
-              />
-              <Stat label="Delivery Tomorrow" value={data.delivery.tomorrow} />
-              <Stat
-                label="Closed"
-                value={data.delivery.closed}
-                tone="good"
-              />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="card p-5">
-                <h2 className="font-semibold mb-3">
-                  Job Board summary{" "}
-                  <span className="text-xs font-normal text-ink-500">
-                    [Order-wise]
-                  </span>
-                </h2>
-                <div className="space-y-2">
-                  {WO_STATUSES.map((s) => {
-                    const n = data.byStatus[s] || 0;
-                    const pct = data.totalWo
-                      ? (n / data.totalWo) * 100
-                      : 0;
-                    return (
-                      <div key={s} className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-28 shrink-0 text-xs text-ink-700 sm:w-40 sm:text-sm">
-                          {WO_STATUS_LABELS[s as WoStatus]}
-                        </div>
-                        <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-ink-100">
-                          <div
-                            className="h-full bg-brand-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="w-6 text-right text-sm font-medium tabular-nums sm:w-8">
-                          {n}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <Link
-                  href="/job-board"
-                  className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-                >
-                  Open Job Board
-                  <Icon name="chevronRight" size={14} />
-                </Link>
-              </div>
-
-              <div className="card p-5">
-                <h2 className="font-semibold mb-3">
-                  Wastage &amp; loss by stage
-                </h2>
-                {data.lossByStage.length === 0 ? (
-                  <p className="text-sm text-ink-500">No stage entries yet.</p>
-                ) : (
-                  <>
-                    {/* Mobile: compact rows */}
-                    <div className="divide-y divide-ink-100 sm:hidden">
-                      {data.lossByStage.map((l) => (
-                        <div
-                          key={l._id}
-                          className="flex items-center justify-between gap-2 py-2"
-                        >
-                          <span className="text-sm text-ink-800">
-                            {STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] ||
-                              l._id}
-                          </span>
-                          <div className="flex items-center gap-3 text-xs tabular-nums">
-                            <span className="text-ink-600">
-                              {l.avgLossPct?.toFixed(1)}%
-                            </span>
-                            <span
-                              className={
-                                l.flagged
-                                  ? "font-semibold text-red-600"
-                                  : "text-ink-400"
-                              }
-                            >
-                              {l.flagged} flagged
-                            </span>
-                            <span className="text-ink-400">
-                              {l.entries} ent.
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Desktop: table */}
-                    <table className="hidden w-full sm:table">
-                      <thead>
-                        <tr>
-                          <th className="th">Stage</th>
-                          <th className="th text-right">Avg loss %</th>
-                          <th className="th text-right">Flagged</th>
-                          <th className="th text-right">Entries</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.lossByStage.map((l) => (
-                          <tr key={l._id}>
-                            <td className="td">
-                              {STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] ||
-                                l._id}
-                            </td>
-                            <td className="td text-right">
-                              {l.avgLossPct?.toFixed(1)}%
-                            </td>
-                            <td
-                              className={`td text-right ${
-                                l.flagged ? "text-red-600 font-semibold" : ""
-                              }`}
-                            >
-                              {l.flagged}
-                            </td>
-                            <td className="td text-right">{l.entries}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </>
-                )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {data.rollsByGrade.map((g) => (
-                    <span
-                      key={g._id}
-                      className="badge bg-ink-100 text-ink-700"
-                    >
-                      Grade {g._id}: {g.count} rolls · {g.meters.toFixed(0)} m
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        {data && <DashboardBody data={data} />}
       </DataGate>
+    </div>
+  );
+}
+
+function DashboardBody({ data }: { data: Wip }) {
+  const statusSlices: Slice[] = WO_STATUSES.map((s) => ({
+    label: WO_STATUS_LABELS[s as WoStatus],
+    value: data.byStatus[s] || 0,
+    color: WO_STATUS_COLORS[s as WoStatus],
+  }));
+
+  const activeWo =
+    data.totalWo - (data.byStatus["Closed"] || 0);
+
+  const lossSlices: Slice[] = data.lossByStage.map((l) => ({
+    label: STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] || l._id,
+    value: Number((l.avgLossPct || 0).toFixed(1)),
+    color: l.flagged ? "#dc2626" : "#1c6f63",
+  }));
+
+  const gradeSlices: Slice[] = data.rollsByGrade.map((g) => ({
+    label: `Grade ${g._id}`,
+    value: g.count,
+    color: GRADE_COLORS[g._id] || "#71717a",
+  }));
+  const totalMeters = data.rollsByGrade.reduce((a, g) => a + g.meters, 0);
+  const totalRolls = data.rollsByGrade.reduce((a, g) => a + g.count, 0);
+
+  return (
+    <div className="space-y-5">
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat label="Total work orders" value={data.totalWo} hint={`${activeWo} active`} />
+        <Stat
+          label="Overdue"
+          value={data.delivery.overdue}
+          tone={data.delivery.overdue ? "danger" : "default"}
+          hint="not yet closed"
+        />
+        <Stat
+          label="Due today"
+          value={data.delivery.today}
+          tone={data.delivery.today ? "warn" : "default"}
+        />
+        <Stat label="Due tomorrow" value={data.delivery.tomorrow} />
+        <Stat label="Closed" value={data.delivery.closed} tone="good" />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Status distribution */}
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold">Work orders by status</h2>
+            <Link
+              href="/job-board"
+              className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+            >
+              Job Board
+              <Icon name="chevronRight" size={14} />
+            </Link>
+          </div>
+          <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-6">
+            <div className="shrink-0">
+              <Donut
+                data={statusSlices}
+                centerValue={data.totalWo}
+                centerLabel="orders"
+              />
+            </div>
+            <div className="w-full flex-1 space-y-1.5">
+              {statusSlices.map((s) => (
+                <LegendRow
+                  key={s.label}
+                  color={s.color}
+                  label={s.label}
+                  value={s.value}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Loss by stage */}
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold">Wastage &amp; loss by stage</h2>
+            <span className="text-xs text-ink-400">avg %, flagged in red</span>
+          </div>
+          {lossSlices.length === 0 ? (
+            <p className="py-8 text-center text-sm text-ink-400">
+              No stage entries yet.
+            </p>
+          ) : (
+            <BarList data={lossSlices} valueSuffix="%" />
+          )}
+        </div>
+      </div>
+
+      {/* Output quality */}
+      <div className="card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold">Finished output by grade</h2>
+          <span className="text-sm text-ink-500 tabular-nums">
+            {totalRolls} rolls · {totalMeters.toLocaleString("en-IN")} m
+          </span>
+        </div>
+        {gradeSlices.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ink-400">
+            No rolls packed yet.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <StackBar data={gradeSlices} />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+              {data.rollsByGrade.map((g) => (
+                <LegendRow
+                  key={g._id}
+                  color={GRADE_COLORS[g._id] || "#71717a"}
+                  label={`Grade ${g._id}`}
+                  value={`${g.count} · ${g.meters.toFixed(0)}m`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

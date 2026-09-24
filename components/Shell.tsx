@@ -239,6 +239,21 @@ function MobileNav() {
   );
 }
 
+function Main({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // The job board is a canvas — let it use the full viewport width.
+  const fluid = pathname.startsWith("/job-board");
+  return (
+    <main
+      className={`w-full flex-1 p-4 pb-24 sm:p-6 md:pb-6 ${
+        fluid ? "max-w-none" : "mx-auto max-w-[1400px]"
+      }`}
+    >
+      {children}
+    </main>
+  );
+}
+
 export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <RoleProvider>
@@ -246,9 +261,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <Header />
-          <main className="mx-auto w-full max-w-[1400px] flex-1 p-4 pb-24 sm:p-6 md:pb-6">
-            {children}
-          </main>
+          <Main>{children}</Main>
         </div>
       </div>
       <MobileNav />
