@@ -1,0 +1,169 @@
+"use client";
+
+import Link from "next/link";
+import { getJSON } from "@/lib/client";
+import { useAsync } from "@/components/useAsync";
+import { DataGate } from "@/components/DataGate";
+import { Stat } from "@/components/ui";
+import {
+  WO_STATUSES,
+  WO_STATUS_LABELS,
+  STAGE_LABELS,
+  type WoStatus,
+} from "@/lib/domain";
+
+interface Wip {
+  totalWo: number;
+  byStatus: Record<string, number>;
+  delivery: { overdue: number; today: number; tomorrow: number; closed: number };
+  lossByStage: {
+    _id: string;
+    totalLossQty: number;
+    avgLossPct: number;
+    flagged: number;
+    entries: number;
+  }[];
+  rollsByGrade: { _id: string; count: number; meters: number }[];
+}
+
+export default function DashboardPage() {
+  const { data, error, loading, reload } = useAsync<Wip>(
+    () => getJSON("/api/reports/wip"),
+    []
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Production Dashboard</h1>
+          <p className="text-sm text-ink-500">
+            What needs to be made, where it is, and whether it’s on schedule.
+          </p>
+        </div>
+        <Link href="/work-orders/new" className="btn-primary">
+          + New Work Order
+        </Link>
+      </div>
+
+      <DataGate loading={loading} error={error} onReload={reload}>
+        {data && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Stat label="Total Work Orders" value={data.totalWo} />
+              <Stat
+                label="Overdue"
+                value={data.delivery.overdue}
+                tone={data.delivery.overdue ? "danger" : "default"}
+                hint="not yet closed"
+              />
+              <Stat
+                label="Delivery Today"
+                value={data.delivery.today}
+                tone={data.delivery.today ? "warn" : "default"}
+              />
+              <Stat label="Delivery Tomorrow" value={data.delivery.tomorrow} />
+              <Stat
+                label="Closed"
+                value={data.delivery.closed}
+                tone="good"
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="card p-5">
+                <h2 className="font-semibold mb-3">
+                  Job Board summary{" "}
+                  <span className="text-xs font-normal text-ink-500">
+                    [Order-wise]
+                  </span>
+                </h2>
+                <div className="space-y-2">
+                  {WO_STATUSES.map((s) => {
+                    const n = data.byStatus[s] || 0;
+                    const pct = data.totalWo
+                      ? (n / data.totalWo) * 100
+                      : 0;
+                    return (
+                      <div key={s} className="flex items-center gap-3">
+                        <div className="w-40 text-sm text-ink-700 shrink-0">
+                          {WO_STATUS_LABELS[s as WoStatus]}
+                        </div>
+                        <div className="flex-1 h-2 rounded bg-ink-100 overflow-hidden">
+                          <div
+                            className="h-full bg-brand-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="w-8 text-right text-sm font-medium">
+                          {n}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Link
+                  href="/job-board"
+                  className="mt-4 inline-block text-sm text-brand-700 hover:underline"
+                >
+                  Open Job Board →
+                </Link>
+              </div>
+
+              <div className="card p-5">
+                <h2 className="font-semibold mb-3">
+                  Wastage &amp; loss by stage
+                </h2>
+                {data.lossByStage.length === 0 ? (
+                  <p className="text-sm text-ink-500">No stage entries yet.</p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th className="th">Stage</th>
+                        <th className="th text-right">Avg loss %</th>
+                        <th className="th text-right">Flagged</th>
+                        <th className="th text-right">Entries</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.lossByStage.map((l) => (
+                        <tr key={l._id}>
+                          <td className="td">
+                            {STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] ||
+                              l._id}
+                          </td>
+                          <td className="td text-right">
+                            {l.avgLossPct?.toFixed(1)}%
+                          </td>
+                          <td
+                            className={`td text-right ${
+                              l.flagged ? "text-red-600 font-semibold" : ""
+                            }`}
+                          >
+                            {l.flagged}
+                          </td>
+                          <td className="td text-right">{l.entries}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.rollsByGrade.map((g) => (
+                    <span
+                      key={g._id}
+                      className="badge bg-ink-100 text-ink-700"
+                    >
+                      Grade {g._id}: {g.count} rolls · {g.meters.toFixed(0)} m
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </DataGate>
+    </div>
+  );
+}
