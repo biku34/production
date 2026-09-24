@@ -8,8 +8,6 @@ import mongoose from "mongoose";
  * the connection promise on the Node global so it survives reloads.
  */
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -29,6 +27,8 @@ global._mongooseCache = cached;
 export async function dbConnect(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
 
+  // Read lazily (not at module load) so env loaders like dotenv have run first.
+  const MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
     throw new Error(
       "MONGODB_URI is not set. Copy .env.example to .env.local and add your MongoDB Atlas connection string."
