@@ -90,8 +90,10 @@ The app is a **Progressive Web App** and adapts to phone screens:
 >
 > then open `http://<your-computer-ip>:3000` on the phone (same Wi-Fi). The
 > responsive mobile view itself works in `npm run dev` too — only the install
-> prompt needs the production build. Icons can be regenerated with
-> `node scripts/generate-icons.mjs` after editing `scripts/icon-source.svg`.
+> prompt needs the production build. The app icons are pre-generated and
+> committed under `public/icons/`. To regenerate them after editing
+> `scripts/icon-source.svg`, install the dev-only rasterizer first:
+> `npm i -D sharp && node scripts/generate-icons.mjs`.
 
 ## Using the demo
 
