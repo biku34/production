@@ -65,6 +65,34 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Mobile / PWA (install on a phone)
+
+The app is a **Progressive Web App** and adapts to phone screens:
+
+- **Responsive layout** — on phones the desktop sidebar is replaced by a bottom
+  tab bar (Dashboard · Job Board · Work Orders · Reports · **More**); the *More*
+  sheet reaches Machines, Traceability and Masters. Desktop is unchanged.
+- **Installable** — a web manifest (`/manifest.webmanifest`), app icons, theme
+  color and Apple touch icons are wired up. On Android Chrome use **Add to Home
+  screen / Install**; on iOS Safari use **Share → Add to Home Screen**. It then
+  launches full-screen (standalone) as "Fabric Prod".
+- **Offline-tolerant** — a service worker (`public/sw.js`) caches static assets
+  and falls back to a cached shell when offline. It uses a *network-first*
+  strategy for pages and never caches `/api/*`, so you never see stale data.
+
+> The service worker registers in **production only** (to keep dev hot-reload
+> clean). To try installation on your phone, run a production build on your LAN:
+>
+> ```bash
+> npm run build
+> npm start
+> ```
+>
+> then open `http://<your-computer-ip>:3000` on the phone (same Wi-Fi). The
+> responsive mobile view itself works in `npm run dev` too — only the install
+> prompt needs the production build. Icons can be regenerated with
+> `node scripts/generate-icons.mjs` after editing `scripts/icon-source.svg`.
+
 ## Using the demo
 
 - **Dashboard** — WIP summary, delivery flags, wastage by stage.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
@@ -22,13 +23,20 @@ const NAV = [
   { href: "/masters", label: "Masters", icon: "🧩" },
 ];
 
+// Primary destinations for the mobile bottom bar; the rest live in "More".
+const MOBILE_PRIMARY = ["/", "/job-board", "/work-orders", "/reports"];
+
+function isActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
 function RoleSwitcher() {
   const { role, stage, setRole, setStage } = useRole();
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-ink-500 hidden sm:inline">Acting as</span>
       <select
-        className="input !py-1.5 !w-auto text-sm"
+        className="input !py-1.5 !w-auto text-sm max-w-[9.5rem] sm:max-w-none"
         value={role}
         onChange={(e) => setRole(e.target.value as Role)}
       >
@@ -67,10 +75,7 @@ function Sidebar() {
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {NAV.map((n) => {
-          const active =
-            n.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(n.href);
+          const active = isActive(pathname, n.href);
           return (
             <Link
               key={n.href}
@@ -96,13 +101,87 @@ function Sidebar() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-300/60 bg-white/90 backdrop-blur px-5 py-3">
-      <div className="md:hidden text-sm font-bold text-brand-700">
-        Fabric · Production
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink-300/60 bg-white/90 backdrop-blur px-4 sm:px-5 py-3">
+      <div className="md:hidden flex items-center gap-2 text-sm font-bold text-brand-700">
+        <span aria-hidden>🧵</span> Fabric · Production
       </div>
       <div className="flex-1" />
       <RoleSwitcher />
     </header>
+  );
+}
+
+/** Bottom tab bar for phones; hidden on desktop where the sidebar is used. */
+function MobileNav() {
+  const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primary = NAV.filter((n) => MOBILE_PRIMARY.includes(n.href));
+
+  return (
+    <>
+      {moreOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40"
+          onClick={() => setMoreOpen(false)}
+        >
+          <div
+            className="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-200" />
+            <div className="text-sm font-semibold mb-2">All sections</div>
+            <div className="grid grid-cols-3 gap-2">
+              {NAV.map((n) => {
+                const active = isActive(pathname, n.href);
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    onClick={() => setMoreOpen(false)}
+                    className={`flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-xs font-medium ${
+                      active
+                        ? "bg-brand-50 text-brand-700"
+                        : "text-ink-700 hover:bg-ink-100"
+                    }`}
+                  >
+                    <span className="text-lg">{n.icon}</span>
+                    {n.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-ink-300/60 flex items-stretch pb-[env(safe-area-inset-bottom)]"
+        aria-label="Primary"
+      >
+        {primary.map((n) => {
+          const active = isActive(pathname, n.href);
+          return (
+            <Link
+              key={n.href}
+              href={n.href}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
+                active ? "text-brand-700" : "text-ink-500"
+              }`}
+            >
+              <span className="text-lg leading-none">{n.icon}</span>
+              {n.label}
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium text-ink-500"
+        >
+          <span className="text-lg leading-none">⋯</span>
+          More
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -113,11 +192,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header />
-          <main className="flex-1 p-5 max-w-[1400px] w-full mx-auto">
+          <main className="flex-1 p-4 sm:p-5 pb-24 md:pb-5 max-w-[1400px] w-full mx-auto">
             {children}
           </main>
         </div>
       </div>
+      <MobileNav />
     </RoleProvider>
   );
 }

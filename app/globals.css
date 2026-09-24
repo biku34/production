@@ -52,3 +52,19 @@ body {
     @apply px-3 py-2 text-sm text-ink-900 border-t border-ink-100;
   }
 }
+
+/* Mobile: let wide data tables scroll horizontally inside their card instead of
+   being clipped. Standard responsive-table pattern; desktop is untouched. */
+@media (max-width: 767px) {
+  .card table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  .card table thead,
+  .card table tbody {
+    width: 100%;
+  }
+}
+
