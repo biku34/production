@@ -16,9 +16,23 @@ import {
   type Stage,
 } from "@/lib/domain";
 
-const NAV: { href: string; label: string; icon: IconName }[] = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  children?: { href: string; label: string; icon: IconName }[];
+};
+
+const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: "dashboard" },
-  { href: "/job-board", label: "Job Board", icon: "board" },
+  {
+    href: "/job-board",
+    label: "Job Board",
+    icon: "board",
+    children: [
+      { href: "/job-board/cockpit", label: "WIP Cockpit", icon: "machines" },
+    ],
+  },
   { href: "/work-orders", label: "Work Orders", icon: "workorders" },
   { href: "/machines", label: "Machines", icon: "machines" },
   { href: "/reports", label: "Reports", icon: "reports" },
@@ -33,6 +47,7 @@ const MOBILE_PRIMARY = ["/", "/job-board", "/work-orders", "/reports"];
 const PREFETCH: Record<string, string[]> = {
   "/": ["/api/reports/wip"],
   "/job-board": ["/api/work-orders"],
+  "/job-board/cockpit": ["/api/work-orders"],
   "/work-orders": ["/api/work-orders?"],
   "/machines": ["/api/machines?withQueue=1"],
   "/reports": ["/api/reports/wip", "/api/jobwork"],
@@ -115,26 +130,57 @@ function Sidebar() {
           Shop floor
         </div>
         {NAV.map((n) => {
-          const active = isActive(pathname, n.href);
+          const branchActive = isActive(pathname, n.href);
+          // With children, the parent highlights only on its exact route so the
+          // active child gets its own highlight.
+          const selfActive = n.children ? pathname === n.href : branchActive;
           return (
-            <Link
-              key={n.href}
-              href={n.href}
-              onMouseEnter={() => warm(n.href)}
-              onFocus={() => warm(n.href)}
-              className={`group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-ink-100 text-ink-900"
-                  : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"
-              }`}
-            >
-              <Icon
-                name={n.icon}
-                size={18}
-                className={active ? "text-brand-600" : "text-ink-400 group-hover:text-ink-600"}
-              />
-              {n.label}
-            </Link>
+            <div key={n.href}>
+              <Link
+                href={n.href}
+                onMouseEnter={() => warm(n.href)}
+                onFocus={() => warm(n.href)}
+                className={`group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+                  selfActive
+                    ? "bg-ink-100 text-ink-900"
+                    : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"
+                }`}
+              >
+                <Icon
+                  name={n.icon}
+                  size={18}
+                  className={selfActive ? "text-brand-600" : "text-ink-400 group-hover:text-ink-600"}
+                />
+                {n.label}
+              </Link>
+              {n.children && branchActive && (
+                <div className="mt-0.5 space-y-0.5 pl-4">
+                  {n.children.map((c) => {
+                    const cActive = pathname.startsWith(c.href);
+                    return (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        onMouseEnter={() => warm(c.href)}
+                        onFocus={() => warm(c.href)}
+                        className={`group flex items-center gap-2.5 rounded-md border-l border-ink-200 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                          cActive
+                            ? "bg-ink-100 text-ink-900"
+                            : "text-ink-500 hover:bg-ink-50 hover:text-ink-900"
+                        }`}
+                      >
+                        <Icon
+                          name={c.icon}
+                          size={16}
+                          className={cActive ? "text-brand-600" : "text-ink-400 group-hover:text-ink-600"}
+                        />
+                        {c.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
@@ -176,8 +222,11 @@ function MobileNav() {
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-ink-200" />
             <div className="section-title mb-2">All sections</div>
             <div className="grid grid-cols-3 gap-2">
-              {NAV.map((n) => {
-                const active = isActive(pathname, n.href);
+              {NAV.flatMap((n) => [n, ...(n.children || [])]).map((n) => {
+                const active =
+                  n.href === "/job-board"
+                    ? pathname === "/job-board"
+                    : isActive(pathname, n.href);
                 return (
                   <Link
                     key={n.href}
