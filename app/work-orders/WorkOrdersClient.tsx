@@ -282,20 +282,25 @@ function FiltersPanel({
 
       <div>
         <label className="label">Due date range</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            className="input"
-            value={f.dueFrom}
-            onChange={(e) => setFilter("dueFrom", e.target.value)}
-          />
-          <Icon name="arrowRight" size={16} className="shrink-0 text-ink-400" />
-          <input
-            type="date"
-            className="input"
-            value={f.dueTo}
-            onChange={(e) => setFilter("dueTo", e.target.value)}
-          />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-8 shrink-0 text-xs text-ink-400">From</span>
+            <input
+              type="date"
+              className="input min-w-0 flex-1"
+              value={f.dueFrom}
+              onChange={(e) => setFilter("dueFrom", e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-8 shrink-0 text-xs text-ink-400">To</span>
+            <input
+              type="date"
+              className="input min-w-0 flex-1"
+              value={f.dueTo}
+              onChange={(e) => setFilter("dueTo", e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -324,14 +329,14 @@ function FiltersPanel({
         <div className="flex items-center gap-2">
           <input
             type="number"
-            className="input"
+            className="input min-w-0 flex-1"
             placeholder="Min"
             value={f.qtyMin}
             onChange={(e) => setFilter("qtyMin", e.target.value)}
           />
           <input
             type="number"
-            className="input"
+            className="input min-w-0 flex-1"
             placeholder="Max"
             value={f.qtyMax}
             onChange={(e) => setFilter("qtyMax", e.target.value)}
