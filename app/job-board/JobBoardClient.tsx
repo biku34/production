@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { getJSON, postJSON, fmtDate, fmtNum } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
@@ -39,6 +39,27 @@ const VIEWS: { key: View; label: string; icon: IconName }[] = [
   { key: "summary", label: "Summary", icon: "reports" },
 ];
 
+/** Toggleable columns for the List view (order = render order). */
+type ColKey =
+  | "customer" | "wo" | "title" | "assigned" | "days"
+  | "due" | "status" | "priority" | "pipeline" | "view";
+const COLUMNS: { key: ColKey; label: string }[] = [
+  { key: "customer", label: "Customer" },
+  { key: "wo", label: "WO#" },
+  { key: "title", label: "Title" },
+  { key: "assigned", label: "Assigned To" },
+  { key: "days", label: "Days Left" },
+  { key: "due", label: "Due Date" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "pipeline", label: "Pipeline" },
+  { key: "view", label: "View" },
+];
+const DEFAULT_COLS: ColKey[] = [
+  "customer", "wo", "title", "assigned", "days", "due", "pipeline", "view",
+];
+const COLS_STORAGE_KEY = "jobboard.cols.v1";
+
 export type { JobWo as Wo };
 
 export default function JobBoardClient({ initial }: { initial: JobWo[] | null }) {
@@ -54,6 +75,33 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
   const [q, setQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Which List-view columns are visible (persisted per browser).
+  const [cols, setCols] = useState<Set<ColKey>>(new Set(DEFAULT_COLS));
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLS_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as ColKey[];
+        if (Array.isArray(saved) && saved.length) setCols(new Set(saved));
+      }
+    } catch {
+      /* ignore unavailable storage */
+    }
+  }, []);
+  const toggleCol = (key: ColKey) =>
+    setCols((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      // Keep at least one column visible.
+      if (next.size === 0) return prev;
+      try {
+        localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
 
   const scopedStatus =
     role === "StageSupervisor" && stage ? STAGE_TO_STATUS[stage] : null;
@@ -155,9 +203,13 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <span className="ml-auto text-xs text-ink-400">
-            Live auto-refresh — demo: off
-          </span>
+          {view === "list" ? (
+            <ColumnsMenu cols={cols} toggle={toggleCol} />
+          ) : (
+            <span className="ml-auto text-xs text-ink-400">
+              Live auto-refresh — demo: off
+            </span>
+          )}
         </div>
 
         {/* Status tab strip */}
@@ -182,7 +234,7 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
         </div>
 
         <DataGate loading={loading} error={error} onReload={reload}>
-          {view === "list" && <ListView rows={rows} />}
+          {view === "list" && <ListView rows={rows} cols={cols} />}
           {view === "grid" && <GridView rows={rows} />}
           {view === "summary" && <SummaryView rows={rows} total={all.length} />}
         </DataGate>
@@ -237,12 +289,75 @@ function boardInitials(name: string) {
   return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
 }
 
+/** Dropdown to show/hide List-view columns (persisted in JobBoardClient). */
+function ColumnsMenu({
+  cols,
+  toggle,
+}: {
+  cols: Set<ColKey>;
+  toggle: (k: ColKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div className="relative ml-auto" ref={ref}>
+      <button
+        className="btn-ghost btn-sm"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+      >
+        <Icon name="reports" size={15} />
+        Columns
+        <span className="text-ink-400">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-ink-200 bg-white p-1.5 shadow-pop">
+          <div className="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+            Show columns
+          </div>
+          {COLUMNS.map((c) => {
+            const checked = cols.has(c.key);
+            return (
+              <button
+                key={c.key}
+                onClick={() => toggle(c.key)}
+                className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-ink-700 hover:bg-ink-50"
+              >
+                <span
+                  className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${
+                    checked
+                      ? "border-brand-600 bg-brand-600 text-white"
+                      : "border-ink-300"
+                  }`}
+                >
+                  {checked && <Icon name="check" size={11} />}
+                </span>
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
- * Read-only view. The Job Board only *shows* where each work order is (the
- * pipeline stage) and who is currently handling it — it never changes the
- * stage. Advancing a WO happens on the work-order detail page.
+ * Read-only, column-configurable view. The Job Board only *shows* where each
+ * work order is (the pipeline stage) and who is handling it — advancing a WO
+ * happens on the work-order detail page.
  */
-function ListView({ rows }: { rows: JobWo[] }) {
+function ListView({ rows, cols }: { rows: JobWo[]; cols: Set<ColKey> }) {
   if (rows.length === 0)
     return (
       <div className="py-14 text-center text-sm text-ink-400">
@@ -250,18 +365,24 @@ function ListView({ rows }: { rows: JobWo[] }) {
       </div>
     );
 
+  const show = (k: ColKey) => cols.has(k);
+  const visible = COLUMNS.filter((c) => cols.has(c.key));
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px]">
+      <table className="w-full min-w-[720px]">
         <thead className="bg-ink-100/50">
           <tr>
-            <th className="th">Customer</th>
-            <th className="th">WO#</th>
-            <th className="th">Title</th>
-            <th className="th">Assigned to</th>
-            <th className="th">Due date</th>
-            <th className="th">Pipeline</th>
-            <th className="th w-14 text-center">View</th>
+            {visible.map((c) => (
+              <th
+                key={c.key}
+                className={`th ${c.key === "view" || c.key === "days" ? "text-center" : ""} ${
+                  c.key === "view" ? "w-14" : ""
+                }`}
+              >
+                {c.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -272,60 +393,86 @@ function ListView({ rows }: { rows: JobWo[] }) {
               : WO_STATUS_LABELS[w.status];
             return (
               <tr key={w._id} className="hover:bg-ink-100/40">
-                <td className="td font-medium text-ink-900">{w.customerRef}</td>
-                <td className="td">
-                  <Link
-                    href={`/work-orders/${w._id}`}
-                    className="font-semibold text-brand-700 hover:underline"
-                  >
-                    {w.woNo}
-                  </Link>
-                </td>
-                <td className="td">
-                  <div className="text-ink-900">{w.productName}</div>
-                  <div className="text-xs text-ink-500">
-                    {w.sku ? `${w.sku} · ` : ""}qty {fmtNum(w.targetQty)} {w.unit}
-                  </div>
-                </td>
-                <td className="td">
-                  {w.assignedTo ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink-100 text-[10px] font-semibold text-ink-600">
-                        {boardInitials(w.assignedTo)}
+                {show("customer") && (
+                  <td className="td font-medium text-ink-900">{w.customerRef}</td>
+                )}
+                {show("wo") && (
+                  <td className="td">
+                    <Link
+                      href={`/work-orders/${w._id}`}
+                      className="font-semibold text-brand-700 hover:underline"
+                    >
+                      {w.woNo}
+                    </Link>
+                  </td>
+                )}
+                {show("title") && (
+                  <td className="td">
+                    <div className="text-ink-900">{w.productName}</div>
+                    <div className="text-xs text-ink-500">
+                      {w.sku ? `${w.sku} · ` : ""}qty {fmtNum(w.targetQty)} {w.unit}
+                    </div>
+                  </td>
+                )}
+                {show("assigned") && (
+                  <td className="td">
+                    {w.assignedTo ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink-100 text-[10px] font-semibold text-ink-600">
+                          {boardInitials(w.assignedTo)}
+                        </span>
+                        <span className="whitespace-nowrap text-ink-800">
+                          {w.assignedTo}
+                        </span>
                       </span>
-                      <span className="whitespace-nowrap text-ink-800">
-                        {w.assignedTo}
+                    ) : (
+                      <span className="text-ink-400">Unassigned</span>
+                    )}
+                  </td>
+                )}
+                {show("days") && (
+                  <td className={`td whitespace-nowrap text-center font-medium ${dl.tone}`}>
+                    {dl.label}
+                  </td>
+                )}
+                {show("due") && (
+                  <td className="td whitespace-nowrap">{fmtDate(w.dueDate)}</td>
+                )}
+                {show("status") && (
+                  <td className="td">
+                    <StatusBadge status={w.status} />
+                  </td>
+                )}
+                {show("priority") && (
+                  <td className="td">
+                    <PriorityBadge priority={w.priority} />
+                  </td>
+                )}
+                {show("pipeline") && (
+                  <td className="td">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: WO_STATUS_COLORS[w.status] }}
+                      />
+                      <span className="whitespace-nowrap font-medium text-ink-800">
+                        {stageLabel}
                       </span>
                     </span>
-                  ) : (
-                    <span className="text-ink-400">Unassigned</span>
-                  )}
-                </td>
-                <td className="td whitespace-nowrap">
-                  <div>{fmtDate(w.dueDate)}</div>
-                  <div className={`text-xs ${dl.tone}`}>{dl.label}</div>
-                </td>
-                <td className="td">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: WO_STATUS_COLORS[w.status] }}
-                    />
-                    <span className="whitespace-nowrap font-medium text-ink-800">
-                      {stageLabel}
-                    </span>
-                  </span>
-                </td>
-                <td className="td text-center">
-                  <Link
-                    href={`/work-orders/${w._id}`}
-                    className="inline-grid h-8 w-8 place-items-center rounded-md border border-ink-200 text-ink-500 hover:bg-ink-100 hover:text-ink-900"
-                    title="View work order"
-                    aria-label="View work order"
-                  >
-                    <Icon name="eye" size={16} />
-                  </Link>
-                </td>
+                  </td>
+                )}
+                {show("view") && (
+                  <td className="td text-center">
+                    <Link
+                      href={`/work-orders/${w._id}`}
+                      className="inline-grid h-8 w-8 place-items-center rounded-md border border-ink-200 text-ink-500 hover:bg-ink-100 hover:text-ink-900"
+                      title="View work order"
+                      aria-label="View work order"
+                    >
+                      <Icon name="eye" size={16} />
+                    </Link>
+                  </td>
+                )}
               </tr>
             );
           })}
