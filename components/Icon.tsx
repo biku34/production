@@ -16,6 +16,7 @@ export type IconName =
   | "refresh"
   | "warning"
   | "check"
+  | "eye"
   | "spool";
 
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -103,6 +104,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
+  eye: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
   // brand mark: thread spool
   spool: (
     <>

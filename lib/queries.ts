@@ -17,6 +17,7 @@ import { WO_STATUSES, deliveryFlag, ROLE_LABELS } from "@/lib/domain";
 import { round } from "@/lib/production";
 import { getSession } from "@/lib/auth-server";
 import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB } from "@/lib/access";
+import { attachHandlers } from "@/lib/board-data";
 
 /**
  * Server-side data functions used by Server Components so the page renders with
@@ -47,7 +48,8 @@ export const getWorkOrders = () =>
     if (!session) return [];
     const scope = ROLE_STATUS_SCOPE[session.role];
     const filter = scope ? { status: { $in: scope } } : {};
-    return plain(await WorkOrder.find(filter).sort({ createdAt: -1 }).lean());
+    const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
+    return plain(await attachHandlers(wos as any));
   });
 
 export const getWorkOrderDetail = (id: string) =>

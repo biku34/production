@@ -15,6 +15,7 @@ import {
   WO_STATUS_COLORS,
   WO_TRANSITIONS,
   STAGE_TO_STATUS,
+  STAGE_LABELS,
   canRoleTransition,
   type Role,
   type WoStatus,
@@ -181,7 +182,7 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
         </div>
 
         <DataGate loading={loading} error={error} onReload={reload}>
-          {view === "list" && <ListView rows={rows} busy={busy} move={move} role={role} />}
+          {view === "list" && <ListView rows={rows} />}
           {view === "grid" && <GridView rows={rows} />}
           {view === "summary" && <SummaryView rows={rows} total={all.length} />}
         </DataGate>
@@ -230,17 +231,18 @@ function StatusTab({
 
 /* ------------------------------- List view -------------------------------- */
 
-function ListView({
-  rows,
-  busy,
-  move,
-  role,
-}: {
-  rows: JobWo[];
-  busy: boolean;
-  move: (id: string, to: WoStatus, from: WoStatus) => void;
-  role: Role | null;
-}) {
+function boardInitials(name: string) {
+  const parts = name.trim().split(/[\s.]+/).filter(Boolean);
+  if (!parts.length) return "—";
+  return (parts[0][0] + (parts[parts.length - 1][0] || "")).toUpperCase();
+}
+
+/**
+ * Read-only view. The Job Board only *shows* where each work order is (the
+ * pipeline stage) and who is currently handling it — it never changes the
+ * stage. Advancing a WO happens on the work-order detail page.
+ */
+function ListView({ rows }: { rows: JobWo[] }) {
   if (rows.length === 0)
     return (
       <div className="py-14 text-center text-sm text-ink-400">
@@ -250,38 +252,26 @@ function ListView({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px]">
+      <table className="w-full min-w-[820px]">
         <thead className="bg-ink-100/50">
           <tr>
-            <th className="th w-12 text-center">Step</th>
             <th className="th">Customer</th>
             <th className="th">WO#</th>
             <th className="th">Title</th>
-            <th className="th">Days left</th>
+            <th className="th">Assigned to</th>
             <th className="th">Due date</th>
-            <th className="th">Status</th>
-            <th className="th">Next step</th>
+            <th className="th">Pipeline</th>
+            <th className="th w-14 text-center">View</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((w) => {
-            const step = WO_STATUSES.indexOf(w.status) + 1;
             const dl = daysLeftLabel(w);
-            const next = WO_TRANSITIONS[w.status][0];
-            const mayMove = next ? canRoleTransition(role, w.status, next) : false;
+            const stageLabel = w.currentStage
+              ? STAGE_LABELS[w.currentStage as keyof typeof STAGE_LABELS]
+              : WO_STATUS_LABELS[w.status];
             return (
               <tr key={w._id} className="hover:bg-ink-100/40">
-                <td className="td text-center">
-                  <span
-                    className="inline-grid h-7 w-7 place-items-center rounded-full text-xs font-semibold tabular-nums"
-                    style={{
-                      backgroundColor: `${WO_STATUS_COLORS[w.status]}1a`,
-                      color: WO_STATUS_COLORS[w.status],
-                    }}
-                  >
-                    {step}
-                  </span>
-                </td>
                 <td className="td font-medium text-ink-900">{w.customerRef}</td>
                 <td className="td">
                   <Link
@@ -297,38 +287,44 @@ function ListView({
                     {w.sku ? `${w.sku} · ` : ""}qty {fmtNum(w.targetQty)} {w.unit}
                   </div>
                 </td>
-                <td className={`td ${dl.tone}`}>{dl.label}</td>
-                <td className="td whitespace-nowrap">{fmtDate(w.dueDate)}</td>
                 <td className="td">
-                  <div className="flex flex-wrap items-center gap-1">
-                    <StatusBadge status={w.status} />
-                    <PriorityBadge priority={w.priority} />
-                    <DeliveryBadge dueDate={w.dueDate} />
-                  </div>
+                  {w.assignedTo ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink-100 text-[10px] font-semibold text-ink-600">
+                        {boardInitials(w.assignedTo)}
+                      </span>
+                      <span className="whitespace-nowrap text-ink-800">
+                        {w.assignedTo}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-ink-400">Unassigned</span>
+                  )}
+                </td>
+                <td className="td whitespace-nowrap">
+                  <div>{fmtDate(w.dueDate)}</div>
+                  <div className={`text-xs ${dl.tone}`}>{dl.label}</div>
                 </td>
                 <td className="td">
-                  {next ? (
-                    mayMove ? (
-                      <button
-                        className="btn-ghost btn-sm"
-                        disabled={busy}
-                        onClick={() => move(w._id, next, w.status)}
-                        title={`Advance to ${WO_STATUS_LABELS[next]}`}
-                      >
-                        <Icon name="chevronRight" size={13} />
-                        {WO_STATUS_LABELS[next]}
-                      </button>
-                    ) : (
-                      <span
-                        className="text-xs text-ink-400"
-                        title={`Only the owning role can advance to ${WO_STATUS_LABELS[next]}`}
-                      >
-                        {WO_STATUS_LABELS[next]} (locked)
-                      </span>
-                    )
-                  ) : (
-                    <span className="text-xs text-ink-400">—</span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: WO_STATUS_COLORS[w.status] }}
+                    />
+                    <span className="whitespace-nowrap font-medium text-ink-800">
+                      {stageLabel}
+                    </span>
+                  </span>
+                </td>
+                <td className="td text-center">
+                  <Link
+                    href={`/work-orders/${w._id}`}
+                    className="inline-grid h-8 w-8 place-items-center rounded-md border border-ink-200 text-ink-500 hover:bg-ink-100 hover:text-ink-900"
+                    title="View work order"
+                    aria-label="View work order"
+                  >
+                    <Icon name="eye" size={16} />
+                  </Link>
                 </td>
               </tr>
             );

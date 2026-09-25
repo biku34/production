@@ -7,6 +7,7 @@ import SalesOrder from "@/models/SalesOrder";
 import { createWorkOrder } from "@/lib/production";
 import { STAGE_TO_STATUS, type Stage } from "@/lib/domain";
 import { ROLE_STATUS_SCOPE, canCreateWorkOrder } from "@/lib/access";
+import { attachHandlers } from "@/lib/board-data";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export const GET = handle(async (req) => {
     ];
 
   const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
-  return ok(wos);
+  return ok(await attachHandlers(wos as any));
 });
 
 // POST /api/work-orders  { productId, targetQty, ... } | { salesOrderId }

@@ -11,6 +11,10 @@ export interface JobWo {
   status: WoStatus;
   priority: string;
   dueDate?: string;
+  /** Person currently handling the WO (latest stage-entry operator). */
+  assignedTo?: string | null;
+  /** Current production stage (latest stage entry's stage), for the pipeline. */
+  currentStage?: string | null;
 }
 
 /** Due-date buckets used by the Grid and Summary matrices. */
