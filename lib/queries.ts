@@ -38,6 +38,16 @@ function readCache<A extends unknown[], R>(
 }
 
 /**
+ * Cache a read whose result depends on per-request values (role, owner, id).
+ * Those values MUST be in `keyParts` — a static keyParts does NOT vary by the
+ * function's arguments, so role-scoped data would otherwise leak across users.
+ */
+function scopedRead<R>(keyParts: (string | number | null | undefined)[], fn: () => Promise<R>): Promise<R> {
+  const parts = keyParts.map((p) => (p == null ? "∅" : String(p)));
+  return unstable_cache(fn, parts, { revalidate: READ_TTL, tags: ["reads"] })();
+}
+
+/**
  * Server-side data functions used by Server Components so the page renders with
  * data already present (no client loading spinner). They mirror the API GET
  * routes but skip the HTTP hop. Results are plain JSON (ObjectId/Date → string)
@@ -60,14 +70,15 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 // Cached by role — the WO list for a given role scope (mirrors GET /api/work-orders).
-const cWorkOrders = readCache(async (role: Role, ownerName: string | null) => {
-  const scope = ROLE_STATUS_SCOPE[role];
-  const filter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
-  // Assigned-owner scope: a planner/manager only sees WOs assigned to them.
-  if (ownerName) filter.assignedName = ownerName;
-  const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
-  return plain(await attachHandlers(wos as any));
-}, "work-orders");
+const cWorkOrders = (role: Role, ownerName: string | null) =>
+  scopedRead(["work-orders", role, ownerName], async () => {
+    const scope = ROLE_STATUS_SCOPE[role];
+    const filter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
+    // Assigned-owner scope: a planner/manager only sees WOs assigned to them.
+    if (ownerName) filter.assignedName = ownerName;
+    const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
+    return plain(await attachHandlers(wos as any));
+  });
 
 export const getWorkOrders = () =>
   safe(async () => {
@@ -78,19 +89,20 @@ export const getWorkOrders = () =>
 
 // Cached by id — the WO detail is the same regardless of role; the role-based
 // access check stays outside the cache.
-const cWoDetail = readCache(async (id: string) => {
-  const wo = await WorkOrder.findById(id).lean<any>();
-  if (!wo) return null;
-  const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
-    StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),
-    MaterialIssue.find({ workOrder: id }).sort({ at: 1 }).lean(),
-    Lot.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
-    Roll.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
-    QcInspection.find({ workOrder: id }).sort({ at: 1 }).lean(),
-    JobworkDispatch.find({ workOrder: id }).sort({ dispatchedAt: 1 }).lean(),
-  ]);
-  return plain({ workOrder: wo, stageEntries, issues, lots, rolls, qc, jobwork });
-}, "wo-detail");
+const cWoDetail = (id: string) =>
+  scopedRead(["wo-detail", id], async () => {
+    const wo = await WorkOrder.findById(id).lean<any>();
+    if (!wo) return null;
+    const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
+      StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),
+      MaterialIssue.find({ workOrder: id }).sort({ at: 1 }).lean(),
+      Lot.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
+      Roll.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
+      QcInspection.find({ workOrder: id }).sort({ at: 1 }).lean(),
+      JobworkDispatch.find({ workOrder: id }).sort({ dispatchedAt: 1 }).lean(),
+    ]);
+    return plain({ workOrder: wo, stageEntries, issues, lots, rolls, qc, jobwork });
+  });
 
 export const getWorkOrderDetail = (id: string) =>
   safe(async () => {
@@ -113,7 +125,8 @@ export const getWorkOrderDetail = (id: string) =>
  * block adds the metrics that matter to that role (QC grades, packed rolls,
  * machine load, material issues, or the full management view).
  */
-const cDashboard = readCache(async (role: Role, ownerName: string | null) => {
+const cDashboard = (role: Role, ownerName: string | null) =>
+  scopedRead(["dashboard", role, ownerName], async () => {
     const scope = ROLE_STATUS_SCOPE[role];
     const woFilter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
     // "Assigned owner" scope: a planner/manager sees only the WOs assigned to
@@ -265,7 +278,7 @@ const cDashboard = readCache(async (role: Role, ownerName: string | null) => {
       ...spotlight,
       recent,
     });
-}, "dashboard");
+  });
 
 export const getDashboard = () =>
   safe(async () => {
