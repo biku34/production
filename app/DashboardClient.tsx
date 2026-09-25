@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import { useRole } from "@/components/RoleContext";
 import { canCreateWorkOrder } from "@/lib/access";
-import { Donut, BarList, StackBar, LegendRow, Pie, Scatter, type Slice } from "@/components/charts";
+import { Donut, BarList, StackBar, LegendRow, Pie, ColumnChart, type Slice } from "@/components/charts";
 import {
   WO_STATUSES,
   WO_STATUS_LABELS,
@@ -113,14 +113,12 @@ function Body({ data }: { data: Dashboard }) {
             />
           )}
         </Card>
-        <Card title="Top customers" hint="orders vs meters">
+        <Card title="Top customers" hint="orders">
           {data.byCustomer.length === 0 ? (
             <Empty />
           ) : (
-            <Scatter
-              points={data.byCustomer.map((c, i) => ({ label: c.name, x: c.count, y: c.meters, color: PALETTE[i % PALETTE.length] }))}
-              xLabel="Orders"
-              yLabel="Meters"
+            <ColumnChart
+              data={data.byCustomer.map((c, i) => ({ label: c.name, value: c.count, color: PALETTE[i % PALETTE.length] }))}
             />
           )}
         </Card>

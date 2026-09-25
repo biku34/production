@@ -184,6 +184,56 @@ export function Pie({
   );
 }
 
+/** Vertical bar (column) chart: value on top, label (truncated) below. */
+export function ColumnChart({
+  data,
+  valueSuffix = "",
+  height = 180,
+}: {
+  data: Slice[];
+  valueSuffix?: string;
+  height?: number;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.value));
+  return (
+    <div>
+      <div className="flex items-end gap-2" style={{ height }}>
+        {data.map((d) => (
+          <div
+            key={d.label}
+            className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+            title={`${d.label}: ${d.value}${valueSuffix}`}
+          >
+            <span className="text-[11px] font-medium tabular-nums text-ink-700">
+              {d.value}
+              {valueSuffix}
+            </span>
+            <div
+              className="w-full max-w-[40px] rounded-t transition-[height]"
+              style={{
+                height: `${(d.value / max) * 100}%`,
+                minHeight: 4,
+                backgroundColor: d.color,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2 border-t border-ink-100 pt-1.5">
+        {data.map((d) => (
+          <div
+            key={d.label}
+            className="min-w-0 flex-1 truncate text-center text-[10px] leading-tight text-ink-500"
+            title={d.label}
+          >
+            {d.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export interface Point {
   label: string;
   x: number;
