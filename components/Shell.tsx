@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
-import { prefetch } from "@/components/useAsync";
+import { prefetch, invalidate } from "@/components/useAsync";
 import { getJSON, postJSON } from "@/lib/client";
 import { ROLE_LABELS, type Role } from "@/lib/domain";
 import { canAccessPath } from "@/lib/access";
@@ -96,6 +96,8 @@ function UserMenu() {
     } catch {
       /* clear locally regardless */
     }
+    // Wipe cached session data so the next user starts clean.
+    invalidate();
     router.replace("/login");
     router.refresh();
   }

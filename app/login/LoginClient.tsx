@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { postJSON } from "@/lib/client";
+import { invalidate } from "@/components/useAsync";
 import { Icon } from "@/components/Icon";
 import { DEMO_ACCOUNTS, DEFAULT_PASSWORD } from "@/lib/accounts";
 import { ROLE_LABELS } from "@/lib/domain";
@@ -24,6 +25,9 @@ export default function LoginClient() {
     setError(null);
     try {
       const user = await postJSON("/api/auth/login", { username, password });
+      // Drop any cached data from a previous session so the new user never sees
+      // the last user's orders/dashboard before a refresh.
+      invalidate();
       const dest = next && next !== "/" ? next : homeFor(user.role);
       router.replace(dest);
       router.refresh();
