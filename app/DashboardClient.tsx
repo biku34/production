@@ -99,9 +99,12 @@ function Body({ data }: { data: Dashboard }) {
         <DeliveryCard data={data} />
       </div>
 
-      {/* Product + customer breakdown */}
+      {/* Manager / admin: loss + grade mix + priority (varied chart types) */}
+      {data.manager && <ManagerExtras m={data.manager} priority={data.byPriority} />}
+
+      {/* Product (bars) + customer (ranked) — two different treatments */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="By product" hint={`${data.byProduct.length} products`}>
+        <Card title="Top products" hint={`${data.byProduct.length} products`}>
           {data.byProduct.length === 0 ? (
             <Empty />
           ) : (
@@ -110,44 +113,149 @@ function Body({ data }: { data: Dashboard }) {
             />
           )}
         </Card>
-        <Card title="By customer" hint={`${data.byCustomer.length} customers`}>
+        <Card title="Top customers" hint={`${data.byCustomer.length} customers`}>
           {data.byCustomer.length === 0 ? (
             <Empty />
           ) : (
-            <BarList
-              data={data.byCustomer.map((c, i) => ({ label: c.name, value: c.count, color: PALETTE[i % PALETTE.length] }))}
+            <RankedList
+              items={data.byCustomer.map((c) => ({ label: c.name, value: c.count }))}
+              color="#3b82f6"
             />
           )}
         </Card>
       </div>
 
-      {/* Recent activity */}
+      {/* Recent activity — compact 2-up */}
       <Card title="Recent activity" hint="latest updates in your scope">
         {data.recent.length === 0 ? (
           <Empty />
         ) : (
-          <div className="divide-y divide-ink-100">
+          <div className="grid gap-x-8 sm:grid-cols-2">
             {data.recent.map((r) => (
               <Link
                 key={r._id}
                 href={`/work-orders/${r._id}`}
-                className="flex items-center justify-between gap-3 py-2.5 hover:bg-ink-50/60"
+                className="flex items-center gap-2 border-b border-ink-100 py-2 text-sm hover:bg-ink-50/60"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-brand-700">{r.woNo}</span>
-                    <StatusBadge status={r.status as WoStatus} />
-                  </div>
-                  <div className="truncate text-xs text-ink-500">
-                    {r.product} · {r.customer}
-                  </div>
-                </div>
-                <Icon name="chevronRight" size={15} className="shrink-0 text-ink-400" />
+                <span className="shrink-0 font-semibold text-brand-700">{r.woNo}</span>
+                <StatusBadge status={r.status as WoStatus} />
+                <span className="min-w-0 flex-1 truncate text-ink-500">
+                  {r.product} · {r.customer}
+                </span>
+                <Icon name="chevronRight" size={14} className="shrink-0 text-ink-300" />
               </Link>
             ))}
           </div>
         )}
       </Card>
+    </div>
+  );
+}
+
+/** Manager/admin extras: wastage-by-stage bars, grade-mix stacked bar, priority mix. */
+function ManagerExtras({
+  m,
+  priority,
+}: {
+  m: NonNullable<Dashboard["manager"]>;
+  priority: Dashboard["byPriority"];
+}) {
+  const grades: Slice[] = m.rollsByGrade.map((g) => ({
+    label: `Grade ${g.grade}`,
+    value: g.count,
+    color: GRADE_COLORS[g.grade] || "#71717a",
+  }));
+  const gradeMeters = m.rollsByGrade.reduce((a, g) => a + g.meters, 0);
+  const prioColor = (p: string) =>
+    p === "Rush" ? "#dc2626" : p === "Flagged" ? "#f59e0b" : "#64748b";
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Card title="Wastage & loss by stage" hint="avg %, flagged in red">
+        {m.lossByStage.length === 0 ? (
+          <Empty text="No stage entries yet." />
+        ) : (
+          <BarList
+            data={m.lossByStage.map((l) => ({
+              label: STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] || l.stage,
+              value: l.avgLossPct,
+              color: l.flagged ? "#dc2626" : "#1c6f63",
+            }))}
+            valueSuffix="%"
+          />
+        )}
+      </Card>
+      <Card title="Finished output by grade" hint={`${fmtNum(gradeMeters)} m`}>
+        {grades.length === 0 ? (
+          <Empty text="No rolls packed yet." />
+        ) : (
+          <div className="space-y-4">
+            <StackBar data={grades} />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+              {m.rollsByGrade.map((g) => (
+                <LegendRow
+                  key={g.grade}
+                  color={GRADE_COLORS[g.grade] || "#71717a"}
+                  label={`Grade ${g.grade}`}
+                  value={`${g.count} · ${fmtNum(g.meters)}m`}
+                />
+              ))}
+            </div>
+            {priority.length > 0 && (
+              <div className="border-t border-ink-100 pt-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
+                  Priority mix
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {priority.map((p) => (
+                    <span key={p.priority} className="inline-flex items-center gap-1.5 text-sm">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: prioColor(p.priority) }}
+                      />
+                      <span className="text-ink-600">{p.priority}</span>
+                      <span className="font-semibold tabular-nums text-ink-900">{p.count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** Ranked horizontal list with position numbers + thin bars (distinct from BarList). */
+function RankedList({
+  items,
+  color = "#1c6f63",
+}: {
+  items: { label: string; value: number }[];
+  color?: string;
+}) {
+  const max = Math.max(1, ...items.map((i) => i.value));
+  return (
+    <div className="space-y-2.5">
+      {items.map((it, i) => (
+        <div key={it.label} className="flex items-center gap-3">
+          <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-ink-400">
+            {i + 1}
+          </span>
+          <span className="w-28 shrink-0 truncate text-sm text-ink-800 sm:w-40">
+            {it.label}
+          </span>
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-ink-100">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${(it.value / max) * 100}%`, backgroundColor: color }}
+            />
+          </div>
+          <span className="w-8 shrink-0 text-right text-sm font-medium tabular-nums text-ink-900">
+            {it.value}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -263,16 +371,53 @@ function Spotlight({ data }: { data: Dashboard }) {
 }
 
 function DeliveryCard({ data }: { data: Dashboard }) {
-  const slices: Slice[] = data.dueBuckets.map((b) => ({ label: bucketLabel(b.bucket), value: b.count, color: DUE_COLORS[b.bucket] || "#64748b" }));
-  const anything = data.dueBuckets.some((b) => b.count > 0);
+  const slices: Slice[] = data.dueBuckets.map((b) => ({
+    label: bucketLabel(b.bucket),
+    value: b.count,
+    color: DUE_COLORS[b.bucket] || "#64748b",
+  }));
+  const active = slices.reduce((a, s) => a + s.value, 0);
+  const legend = [...slices, { label: "Closed", value: data.totals.closed, color: "#1c6f63" }];
+  const atRisk = data.totals.overdue + data.totals.today;
+  const onTimePct = active ? Math.round(((active - data.totals.overdue) / active) * 100) : 100;
+
   return (
     <Card title="Delivery outlook" hint="active jobs by due date">
-      {!anything ? <Empty text="No active jobs." /> : (
+      {active === 0 && data.totals.closed === 0 ? (
+        <Empty text="No active jobs." />
+      ) : (
         <div className="space-y-4">
-          <BarList data={slices} />
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-ink-100 pt-3">
-            {slices.map((s) => <LegendRow key={s.label} color={s.color} label={s.label} value={s.value} />)}
-            <LegendRow color="#1c6f63" label="Closed" value={data.totals.closed} />
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-3xl font-semibold leading-none tabular-nums text-ink-900">
+                {onTimePct}%
+              </div>
+              <div className="mt-1 text-xs text-ink-500">on schedule</div>
+            </div>
+            <div className="text-right">
+              <div
+                className={`text-2xl font-semibold leading-none tabular-nums ${
+                  atRisk ? "text-red-600" : "text-ink-900"
+                }`}
+              >
+                {atRisk}
+              </div>
+              <div className="mt-1 text-xs text-ink-500">overdue or due today</div>
+            </div>
+          </div>
+          {/* Stacked bar — different chart type from the ranked bar lists */}
+          <StackBar data={slices} />
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {legend.map((s) => (
+              <span key={s.label} className="inline-flex items-center gap-1.5 text-sm">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: s.color }}
+                />
+                <span className="text-ink-600">{s.label}</span>
+                <span className="font-semibold tabular-nums text-ink-900">{s.value}</span>
+              </span>
+            ))}
           </div>
         </div>
       )}
