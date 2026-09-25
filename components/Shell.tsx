@@ -2,19 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
 import { prefetch } from "@/components/useAsync";
-import { getJSON } from "@/lib/client";
-import {
-  ROLES,
-  ROLE_LABELS,
-  STAGES,
-  STAGE_LABELS,
-  type Role,
-  type Stage,
-} from "@/lib/domain";
+import { getJSON, postJSON } from "@/lib/client";
+import { ROLE_LABELS } from "@/lib/domain";
 
 type NavItem = {
   href: string;
@@ -81,39 +74,52 @@ function Wordmark() {
   );
 }
 
-function RoleSwitcher() {
-  const { role, stage, setRole, setStage } = useRole();
+function UserMenu() {
+  const { user, role, stage, loading } = useRole();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function logout() {
+    setBusy(true);
+    try {
+      await postJSON("/api/auth/logout", {});
+    } catch {
+      /* clear locally regardless */
+    }
+    router.replace("/login");
+    router.refresh();
+  }
+
+  if (loading && !user) {
+    return <span className="text-xs text-ink-400">…</span>;
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="hidden text-[11px] uppercase tracking-wide text-ink-400 sm:inline">
-        Role
-      </span>
-      <select
-        className="input !py-1.5 !w-auto max-w-[10rem] text-sm sm:max-w-none"
-        value={role}
-        onChange={(e) => setRole(e.target.value as Role)}
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 text-right leading-tight">
+        <div className="truncate text-sm font-medium text-ink-900">
+          {user?.name ?? "Not signed in"}
+        </div>
+        <div className="truncate text-[11px] text-ink-500">
+          {role ? ROLE_LABELS[role] : "—"}
+          {stage ? ` · ${stage}` : ""}
+        </div>
+      </div>
+      <div
+        className="grid h-8 w-8 place-items-center rounded-full bg-ink-900 text-xs font-semibold text-white"
+        aria-hidden
       >
-        {ROLES.map((r) => (
-          <option key={r} value={r}>
-            {ROLE_LABELS[r]}
-          </option>
-        ))}
-      </select>
-      {role === "StageSupervisor" && (
-        <select
-          className="input !py-1.5 !w-auto text-sm"
-          value={stage || ""}
-          onChange={(e) => setStage(e.target.value as Stage)}
-        >
-          {STAGES.filter((s) =>
-            ["Weaving", "Dyeing", "Finishing"].includes(s)
-          ).map((s) => (
-            <option key={s} value={s}>
-              {STAGE_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      )}
+        {(user?.name ?? "?").slice(0, 1).toUpperCase()}
+      </div>
+      <button
+        className="btn-ghost btn-sm"
+        onClick={logout}
+        disabled={busy}
+        title="Sign out"
+      >
+        <Icon name="close" size={14} />
+        <span className="hidden sm:inline">Sign out</span>
+      </button>
     </div>
   );
 }
@@ -198,7 +204,7 @@ function Header() {
         <Wordmark />
       </div>
       <div className="hidden md:block" />
-      <RoleSwitcher />
+      <UserMenu />
     </header>
   );
 }
@@ -304,6 +310,14 @@ function Main({ children }: { children: React.ReactNode }) {
 }
 
 export default function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // The login route renders full-bleed, without the app chrome or a session
+  // provider (there is no user yet).
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
   return (
     <RoleProvider>
       <div className="flex min-h-screen">

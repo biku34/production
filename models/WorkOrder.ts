@@ -12,6 +12,7 @@ const StatusHistorySchema = new Schema(
     from: { type: String },
     to: { type: String, required: true },
     byName: { type: String },
+    byRole: { type: String },
     at: { type: Date, default: Date.now },
     note: { type: String },
   },

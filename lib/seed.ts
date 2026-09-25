@@ -17,6 +17,8 @@ import {
 } from "@/models";
 import { createWorkOrder, deriveLoss } from "@/lib/production";
 import { nextId } from "@/models/Counter";
+import { hashPassword } from "@/lib/password";
+import { DEMO_ACCOUNTS, DEFAULT_PASSWORD } from "@/lib/accounts";
 
 /**
  * Idempotent-ish demo seed. Wipes the module's collections and rebuilds a
@@ -44,18 +46,19 @@ export async function seedDatabase() {
     Counter.deleteMany({}),
   ]);
 
-  // --- Users (roles per SRS §2.3) ---
-  const users = await User.create([
-    { name: "Asha Rao", email: "asha.admin@plant.local", role: "PlantAdmin" },
-    { name: "Vikram Shah", email: "vikram.planner@plant.local", role: "ProductionPlanner" },
-    { name: "Sunita Devi", email: "sunita.store@plant.local", role: "StoreKeeper" },
-    { name: "Ramesh K", email: "ramesh.weaving@plant.local", role: "StageSupervisor", stages: ["Weaving"] },
-    { name: "Farah N", email: "farah.dyeing@plant.local", role: "StageSupervisor", stages: ["Dyeing"] },
-    { name: "Iqbal M", email: "iqbal.finishing@plant.local", role: "StageSupervisor", stages: ["Finishing"] },
-    { name: "Deepa S", email: "deepa.qc@plant.local", role: "QCInspector" },
-    { name: "Naveen P", email: "naveen.jobwork@plant.local", role: "JobWorkCoordinator" },
-    { name: "Gita B", email: "gita.packing@plant.local", role: "PackingDispatch" },
-  ]);
+  // --- Users (roles per SRS §2.3) — one login account each, hashed default
+  //     password. Credentials live in lib/accounts.ts (shared with login UI). ---
+  const passwordHash = hashPassword(DEFAULT_PASSWORD);
+  const users = await User.create(
+    DEMO_ACCOUNTS.map((a) => ({
+      name: a.name,
+      email: a.email,
+      username: a.username,
+      passwordHash,
+      role: a.role,
+      stages: a.stages ?? [],
+    }))
+  );
   const planner = users.find((u) => u.role === "ProductionPlanner")!;
 
   // --- Materials ---

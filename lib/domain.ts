@@ -84,6 +84,43 @@ export const ROLE_LABELS: Record<Role, string> = {
   PackingDispatch: "Packing / Dispatch",
 };
 
+/**
+ * RBAC — which roles may perform each status transition (FR-JB-4, SRS §2.3).
+ * PlantAdmin can do anything (see canRoleTransition). Keyed `"<from>>><to>"`.
+ * The manager (planner) pushes a WO into the pipeline; each subsequent role
+ * owns the hand-off out of its own stage; QC can reject back to production.
+ */
+export const TRANSITION_ROLES: Partial<Record<string, Role[]>> = {
+  "Created>>Sampling": ["ProductionPlanner"],
+  "Created>>PreProductionReview": ["ProductionPlanner"],
+  "Sampling>>PreProductionReview": ["ProductionPlanner"],
+  "Sampling>>Created": ["ProductionPlanner"],
+  "PreProductionReview>>InProduction": ["ProductionPlanner", "StoreKeeper"],
+  "PreProductionReview>>Sampling": ["ProductionPlanner"],
+  "InProduction>>InInspection": ["StageSupervisor"],
+  "InProduction>>PreProductionReview": ["StageSupervisor", "ProductionPlanner"],
+  "InInspection>>PackingDispatch": ["QCInspector"],
+  "InInspection>>InProduction": ["QCInspector"], // QC reject → back to floor
+  "PackingDispatch>>Closed": ["PackingDispatch"],
+  "PackingDispatch>>InInspection": ["PackingDispatch", "QCInspector"],
+};
+
+/** Roles allowed to move a WO from `from` to `to` (empty ⇒ nobody but Admin). */
+export function rolesForTransition(from: WoStatus, to: WoStatus): Role[] {
+  return TRANSITION_ROLES[`${from}>>${to}`] ?? [];
+}
+
+/** Whether a given role may perform a transition. PlantAdmin is unrestricted. */
+export function canRoleTransition(
+  role: Role | null | undefined,
+  from: WoStatus,
+  to: WoStatus
+): boolean {
+  if (!canTransition(from, to)) return false;
+  if (role === "PlantAdmin") return true;
+  return role ? rolesForTransition(from, to).includes(role) : false;
+}
+
 // --- Production stages (SRS Appendix A) --------------------------------------
 export const STAGES = [
   "MaterialIssue",

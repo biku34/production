@@ -13,6 +13,8 @@ import {
   WO_STATUS_LABELS,
   WO_STATUS_COLORS,
   WO_TRANSITIONS,
+  canRoleTransition,
+  type Role,
   type WoStatus,
 } from "@/lib/domain";
 import { JobBoardTabs } from "../JobBoardTabs";
@@ -74,7 +76,7 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
     setBusy(true);
     setToast(null);
     try {
-      await postJSON(`/api/work-orders/${woId}/transition`, { to, byName: role });
+      await postJSON(`/api/work-orders/${woId}/transition`, { to });
       await reload();
     } catch (e: any) {
       setToast(e?.message || "Transition failed");
@@ -159,7 +161,7 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {cards.map((w) => (
-              <JobCard key={w._id} w={w} busy={busy} move={move} />
+              <JobCard key={w._id} w={w} busy={busy} move={move} role={role} />
             ))}
           </div>
         )}
@@ -184,10 +186,12 @@ function JobCard({
   w,
   busy,
   move,
+  role,
 }: {
   w: JobWo;
   busy: boolean;
   move: (id: string, to: WoStatus, from: WoStatus) => void;
+  role: Role | null;
 }) {
   const dl = daysLeftLabel(w);
   const transitions = WO_TRANSITIONS[w.status];
@@ -232,18 +236,26 @@ function JobCard({
           {transitions.length === 0 ? (
             <span className="badge bg-brand-50 text-brand-700">Complete</span>
           ) : (
-            transitions.map((to) => (
-              <button
-                key={to}
-                disabled={busy}
-                onClick={() => move(w._id, to, w.status)}
-                className="btn-ghost btn-sm !py-1"
-                title={`Move to ${WO_STATUS_LABELS[to]}`}
-              >
-                <Icon name="chevronRight" size={13} />
-                {WO_STATUS_LABELS[to]}
-              </button>
-            ))
+            transitions.map((to) => {
+              const allowed = canRoleTransition(role, w.status, to);
+              return (
+                <button
+                  key={to}
+                  disabled={busy || !allowed}
+                  onClick={() => move(w._id, to, w.status)}
+                  className="btn-ghost btn-sm !py-1"
+                  title={
+                    allowed
+                      ? `Move to ${WO_STATUS_LABELS[to]}`
+                      : `Only the owning role can move to ${WO_STATUS_LABELS[to]}`
+                  }
+                >
+                  <Icon name="chevronRight" size={13} />
+                  {WO_STATUS_LABELS[to]}
+                  {!allowed && " (locked)"}
+                </button>
+              );
+            })
           )}
         </div>
         <Link

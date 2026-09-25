@@ -1,56 +1,62 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { getJSON } from "@/lib/client";
 import { ROLES, ROLE_LABELS, STAGES, type Role, type Stage } from "@/lib/domain";
 
 /**
- * Placeholder auth: the current user's role is held in localStorage and can be
- * switched from the header. This drives the role-scoped Job Board (FR-JB-3) —
- * a stage supervisor is pinned to a stage.
+ * Real (placeholder-grade) auth: the signed-in user comes from the httpOnly
+ * session cookie via /api/auth/me. This drives the role-scoped Job Board
+ * (FR-JB-3) — a stage supervisor is pinned to their stage — and stamps the
+ * actual person's name on every action (FR-WO-6).
  */
 
-interface RoleState {
+export interface CurrentUser {
+  uid: string;
+  name: string;
+  username: string;
   role: Role;
-  stage: Stage | null; // for a StageSupervisor
-  setRole: (r: Role) => void;
-  setStage: (s: Stage | null) => void;
+  stages: Stage[];
+}
+
+interface RoleState {
+  user: CurrentUser | null;
+  role: Role | null;
+  stage: Stage | null; // primary stage for a StageSupervisor
+  loading: boolean;
 }
 
 const RoleCtx = createContext<RoleState | null>(null);
 
-const SUPERVISOR_DEFAULT_STAGE: Stage = "Weaving";
-
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<Role>("ProductionPlanner");
-  const [stage, setStageState] = useState<Stage | null>(null);
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const r = (localStorage.getItem("role") as Role) || "ProductionPlanner";
-    const s = localStorage.getItem("stage") as Stage | null;
-    setRoleState(r);
-    setStageState(r === "StageSupervisor" ? s || SUPERVISOR_DEFAULT_STAGE : null);
+    let alive = true;
+    getJSON<CurrentUser>("/api/auth/me")
+      .then((u) => {
+        if (alive) setUser(u);
+      })
+      .catch(() => {
+        if (alive) setUser(null);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  const setRole = (r: Role) => {
-    setRoleState(r);
-    localStorage.setItem("role", r);
-    if (r === "StageSupervisor") {
-      const s = (localStorage.getItem("stage") as Stage) || SUPERVISOR_DEFAULT_STAGE;
-      setStageState(s);
-      localStorage.setItem("stage", s);
-    } else {
-      setStageState(null);
-    }
-  };
-
-  const setStage = (s: Stage | null) => {
-    setStageState(s);
-    if (s) localStorage.setItem("stage", s);
-  };
-
-  const value = useMemo(
-    () => ({ role, stage, setRole, setStage }),
-    [role, stage]
+  const value = useMemo<RoleState>(
+    () => ({
+      user,
+      role: user?.role ?? null,
+      stage: user?.stages?.[0] ?? null,
+      loading,
+    }),
+    [user, loading]
   );
 
   return <RoleCtx.Provider value={value}>{children}</RoleCtx.Provider>;

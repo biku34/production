@@ -15,6 +15,8 @@ import {
   WO_STATUS_COLORS,
   WO_TRANSITIONS,
   STAGE_TO_STATUS,
+  canRoleTransition,
+  type Role,
   type WoStatus,
 } from "@/lib/domain";
 import { JobBoardTabs } from "./JobBoardTabs";
@@ -83,7 +85,7 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
     setBusy(true);
     setToast(null);
     try {
-      await postJSON(`/api/work-orders/${woId}/transition`, { to, byName: role });
+      await postJSON(`/api/work-orders/${woId}/transition`, { to });
       await reload();
     } catch (e: any) {
       setToast(e?.message || "Transition failed");
@@ -176,7 +178,7 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
         </div>
 
         <DataGate loading={loading} error={error} onReload={reload}>
-          {view === "list" && <ListView rows={rows} busy={busy} move={move} />}
+          {view === "list" && <ListView rows={rows} busy={busy} move={move} role={role} />}
           {view === "grid" && <GridView rows={rows} />}
           {view === "summary" && <SummaryView rows={rows} total={all.length} />}
         </DataGate>
@@ -229,10 +231,12 @@ function ListView({
   rows,
   busy,
   move,
+  role,
 }: {
   rows: JobWo[];
   busy: boolean;
   move: (id: string, to: WoStatus, from: WoStatus) => void;
+  role: Role | null;
 }) {
   if (rows.length === 0)
     return (
@@ -261,6 +265,7 @@ function ListView({
             const step = WO_STATUSES.indexOf(w.status) + 1;
             const dl = daysLeftLabel(w);
             const next = WO_TRANSITIONS[w.status][0];
+            const mayMove = next ? canRoleTransition(role, w.status, next) : false;
             return (
               <tr key={w._id} className="hover:bg-ink-100/40">
                 <td className="td text-center">
@@ -300,15 +305,24 @@ function ListView({
                 </td>
                 <td className="td">
                   {next ? (
-                    <button
-                      className="btn-ghost btn-sm"
-                      disabled={busy}
-                      onClick={() => move(w._id, next, w.status)}
-                      title={`Advance to ${WO_STATUS_LABELS[next]}`}
-                    >
-                      <Icon name="chevronRight" size={13} />
-                      {WO_STATUS_LABELS[next]}
-                    </button>
+                    mayMove ? (
+                      <button
+                        className="btn-ghost btn-sm"
+                        disabled={busy}
+                        onClick={() => move(w._id, next, w.status)}
+                        title={`Advance to ${WO_STATUS_LABELS[next]}`}
+                      >
+                        <Icon name="chevronRight" size={13} />
+                        {WO_STATUS_LABELS[next]}
+                      </button>
+                    ) : (
+                      <span
+                        className="text-xs text-ink-400"
+                        title={`Only the owning role can advance to ${WO_STATUS_LABELS[next]}`}
+                      >
+                        {WO_STATUS_LABELS[next]} (locked)
+                      </span>
+                    )
                   ) : (
                     <span className="text-xs text-ink-400">—</span>
                   )}

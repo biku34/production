@@ -16,6 +16,7 @@ import {
   WO_TRANSITIONS,
   WO_STATUS_LABELS,
   STAGE_LABELS,
+  canRoleTransition,
   type WoStatus,
 } from "@/lib/domain";
 import { StageEntryForm } from "@/components/wo/StageEntryForm";
@@ -44,7 +45,7 @@ export default function WorkOrderDetailClient({
   async function transition(to: WoStatus) {
     setBusy(true);
     try {
-      await postJSON(`/api/work-orders/${id}/transition`, { to, byName: role });
+      await postJSON(`/api/work-orders/${id}/transition`, { to });
       await reload();
     } catch (e: any) {
       alert(e?.message);
@@ -93,17 +94,26 @@ export default function WorkOrderDetailClient({
                         Lifecycle complete
                       </span>
                     )}
-                    {WO_TRANSITIONS[wo.status as WoStatus].map((to) => (
-                      <button
-                        key={to}
-                        className="btn-ghost btn-sm"
-                        disabled={busy}
-                        onClick={() => transition(to)}
-                      >
-                        <Icon name="chevronRight" size={14} />
-                        {WO_STATUS_LABELS[to]}
-                      </button>
-                    ))}
+                    {WO_TRANSITIONS[wo.status as WoStatus].map((to) => {
+                      const allowed = canRoleTransition(role, wo.status as WoStatus, to);
+                      return (
+                        <button
+                          key={to}
+                          className="btn-ghost btn-sm"
+                          disabled={busy || !allowed}
+                          onClick={() => transition(to)}
+                          title={
+                            allowed
+                              ? `Move to ${WO_STATUS_LABELS[to]}`
+                              : `Only the owning role can move to ${WO_STATUS_LABELS[to]}`
+                          }
+                        >
+                          <Icon name="chevronRight" size={14} />
+                          {WO_STATUS_LABELS[to]}
+                          {!allowed && " (locked)"}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
