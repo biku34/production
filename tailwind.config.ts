@@ -29,18 +29,19 @@ const config: Config = {
         },
         // Surface — "white" in light, a raised dark panel in dark.
         white: "rgb(var(--surface) / <alpha-value>)",
-        // Accent — deep petrol teal, used sparingly
+        // Accent — petrol teal. Variable-driven so it can brighten on dark
+        // (values in globals.css). Kept legible as text and as a button bg.
         brand: {
-          50: "#f0f9f7",
-          100: "#d9efea",
-          200: "#b3ded6",
-          300: "#84c6bb",
-          400: "#4fa89b",
-          500: "#2b8a7c",
-          600: "#1c6f63",
-          700: "#175a51",
-          800: "#154a43",
-          900: "#123c37",
+          50: "rgb(var(--brand-50) / <alpha-value>)",
+          100: "rgb(var(--brand-100) / <alpha-value>)",
+          200: "rgb(var(--brand-200) / <alpha-value>)",
+          300: "rgb(var(--brand-300) / <alpha-value>)",
+          400: "rgb(var(--brand-400) / <alpha-value>)",
+          500: "rgb(var(--brand-500) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
+          800: "rgb(var(--brand-800) / <alpha-value>)",
+          900: "rgb(var(--brand-900) / <alpha-value>)",
         },
       },
       boxShadow: {

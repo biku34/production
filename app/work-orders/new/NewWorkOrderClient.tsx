@@ -208,7 +208,7 @@ export default function NewWorkOrderClient({
             </Field>
 
             {err && (
-              <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+              <div className="alert-danger rounded-lg text-sm px-3 py-2">
                 {err}
               </div>
             )}

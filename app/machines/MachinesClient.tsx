@@ -14,10 +14,10 @@ export default function MachinesClient({ initial }: { initial: any[] | null }) {
   );
 
   const statusStyle: Record<string, string> = {
-    Available: "bg-emerald-100 text-emerald-700",
-    Running: "bg-blue-100 text-blue-700",
-    Down: "bg-red-100 text-red-700",
-    Maintenance: "bg-amber-100 text-amber-700",
+    Available: "pill pill-green",
+    Running: "pill pill-blue",
+    Down: "pill pill-red",
+    Maintenance: "pill pill-amber",
   };
 
   return (
@@ -36,7 +36,7 @@ export default function MachinesClient({ initial }: { initial: any[] | null }) {
                   <div className="font-semibold">{m.name}</div>
                   <div className="text-xs text-ink-500">{m.code}</div>
                 </div>
-                <span className={`badge ${statusStyle[m.status] || ""}`}>
+                <span className={statusStyle[m.status] || "pill pill-neutral"}>
                   {m.status}
                 </span>
               </div>

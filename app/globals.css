@@ -25,6 +25,17 @@
   --ink-100: 34 34 40;
   --ink-50: 26 26 31;
   --selection: #14413b;
+  /* Brand — brightened for dark so links/buttons/icons read as "bright teal". */
+  --brand-50: 16 43 39;
+  --brand-100: 21 58 52;
+  --brand-200: 23 74 66;
+  --brand-300: 43 138 124;
+  --brand-400: 79 168 155;
+  --brand-500: 100 196 182;
+  --brand-600: 63 178 160;
+  --brand-700: 132 198 187;
+  --brand-800: 179 222 214;
+  --brand-900: 217 239 234;
 }
 
 :root[data-theme="light"] {
@@ -43,6 +54,16 @@
   --ink-100: 244 244 245;
   --ink-50: 250 250 250;
   --selection: #d9efea;
+  --brand-50: 240 249 247;
+  --brand-100: 217 239 234;
+  --brand-200: 179 222 214;
+  --brand-300: 132 198 187;
+  --brand-400: 79 168 155;
+  --brand-500: 43 138 124;
+  --brand-600: 28 111 99;
+  --brand-700: 23 90 81;
+  --brand-800: 21 74 67;
+  --brand-900: 18 60 55;
 }
 
 html,
@@ -121,7 +142,49 @@ body {
   .section-title {
     @apply text-[11px] font-semibold uppercase tracking-wider text-ink-500;
   }
+
+  /* Status / delivery pills. Base = dark theme (translucent tint + bright
+     label); light theme overrides below with the original soft pastels. */
+  .pill {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium;
+  }
 }
+
+/* Dark (default) pill tones */
+.pill-neutral { background: rgb(255 255 255 / 0.07); color: #d4d4d8; border-color: rgb(255 255 255 / 0.14); }
+.pill-violet  { background: rgb(139 92 246 / 0.16); color: #c4b5fd; border-color: rgb(139 92 246 / 0.32); }
+.pill-amber   { background: rgb(245 158 11 / 0.16); color: #fcd34d; border-color: rgb(245 158 11 / 0.32); }
+.pill-blue    { background: rgb(59 130 246 / 0.16); color: #93c5fd; border-color: rgb(59 130 246 / 0.32); }
+.pill-fuchsia { background: rgb(217 70 239 / 0.16); color: #f0abfc; border-color: rgb(217 70 239 / 0.32); }
+.pill-cyan    { background: rgb(6 182 212 / 0.16);  color: #67e8f9; border-color: rgb(6 182 212 / 0.32); }
+.pill-green   { background: rgb(45 138 124 / 0.20); color: #84c6bb; border-color: rgb(45 138 124 / 0.38); }
+.pill-red     { background: rgb(239 68 68 / 0.16);  color: #fca5a5; border-color: rgb(239 68 68 / 0.32); }
+.pill-orange  { background: rgb(249 115 22 / 0.16); color: #fdba74; border-color: rgb(249 115 22 / 0.32); }
+.pill-yellow  { background: rgb(234 179 8 / 0.18);  color: #fde047; border-color: rgb(234 179 8 / 0.34); }
+
+/* Danger / error banner — theme-aware (dark tint by default). */
+.alert-danger {
+  background: rgb(239 68 68 / 0.12);
+  color: #fca5a5;
+  border: 1px solid rgb(239 68 68 / 0.3);
+}
+[data-theme="light"] .alert-danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* Light theme pill tones (soft pastels) */
+[data-theme="light"] .pill-neutral { background: #f4f4f5; color: #3f3f46; border-color: rgb(82 82 91 / 0.15); }
+[data-theme="light"] .pill-violet  { background: #f5f3ff; color: #6d28d9; border-color: rgb(124 58 237 / 0.2); }
+[data-theme="light"] .pill-amber   { background: #fffbeb; color: #b45309; border-color: rgb(217 119 6 / 0.2); }
+[data-theme="light"] .pill-blue    { background: #eff6ff; color: #1d4ed8; border-color: rgb(37 99 235 / 0.2); }
+[data-theme="light"] .pill-fuchsia { background: #fdf4ff; color: #a21caf; border-color: rgb(192 38 211 / 0.2); }
+[data-theme="light"] .pill-cyan    { background: #ecfeff; color: #0e7490; border-color: rgb(8 145 178 / 0.2); }
+[data-theme="light"] .pill-green   { background: #f0f9f7; color: #175a51; border-color: rgb(28 111 99 / 0.2); }
+[data-theme="light"] .pill-red     { background: #fef2f2; color: #b91c1c; border-color: rgb(220 38 38 / 0.2); }
+[data-theme="light"] .pill-orange  { background: #fff7ed; color: #c2410c; border-color: rgb(234 88 12 / 0.2); }
+[data-theme="light"] .pill-yellow  { background: #fefce8; color: #854d0e; border-color: rgb(202 138 4 / 0.25); }
 
 /* Mobile: let wide data tables scroll horizontally inside their card instead of
    being clipped. Standard responsive-table pattern; desktop is untouched.

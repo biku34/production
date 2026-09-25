@@ -10,22 +10,20 @@ import {
   type DeliveryFlag,
 } from "@/lib/domain";
 
-const chip = "ring-1 ring-inset";
-
 const STATUS_STYLE: Record<WoStatus, string> = {
-  Created: "bg-ink-100 text-ink-700 ring-ink-600/15",
-  Sampling: "bg-violet-50 text-violet-700 ring-violet-600/20",
-  PreProductionReview: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  InProduction: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  InInspection: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-600/20",
-  PackingDispatch: "bg-cyan-50 text-cyan-700 ring-cyan-600/20",
-  Closed: "bg-brand-50 text-brand-700 ring-brand-600/20",
+  Created: "pill pill-neutral",
+  Sampling: "pill pill-violet",
+  PreProductionReview: "pill pill-amber",
+  InProduction: "pill pill-blue",
+  InInspection: "pill pill-fuchsia",
+  PackingDispatch: "pill pill-cyan",
+  Closed: "pill pill-green",
 };
 
 export function StatusBadge({ status }: { status: WoStatus }) {
   return (
     <span
-      className={`badge ${chip} ${STATUS_STYLE[status] || "bg-ink-100 text-ink-700 ring-ink-600/15"}`}
+      className={STATUS_STYLE[status] || "pill pill-neutral"}
       title={WO_STATUS_REF[status]}
     >
       {WO_STATUS_LABELS[status] || status}
@@ -34,11 +32,11 @@ export function StatusBadge({ status }: { status: WoStatus }) {
 }
 
 const FLAG_STYLE: Record<DeliveryFlag, string> = {
-  Overdue: "bg-red-50 text-red-700 ring-red-600/20",
-  Today: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  Tomorrow: "bg-yellow-50 text-yellow-800 ring-yellow-600/25",
-  OnTrack: "bg-ink-50 text-ink-600 ring-ink-500/15",
-  None: "bg-ink-50 text-ink-500 ring-ink-500/15",
+  Overdue: "pill pill-red",
+  Today: "pill pill-orange",
+  Tomorrow: "pill pill-yellow",
+  OnTrack: "pill pill-neutral",
+  None: "pill pill-neutral",
 };
 
 const FLAG_LABEL: Record<DeliveryFlag, string> = {
@@ -52,7 +50,7 @@ const FLAG_LABEL: Record<DeliveryFlag, string> = {
 export function DeliveryBadge({ dueDate }: { dueDate?: string | Date | null }) {
   const flag = deliveryFlag(dueDate);
   if (flag === "None") return null;
-  return <span className={`badge ${chip} ${FLAG_STYLE[flag]}`}>{FLAG_LABEL[flag]}</span>;
+  return <span className={FLAG_STYLE[flag]}>{FLAG_LABEL[flag]}</span>;
 }
 
 export function PriorityBadge({ priority }: { priority?: string }) {

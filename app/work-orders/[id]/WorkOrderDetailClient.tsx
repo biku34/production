@@ -99,7 +99,7 @@ export default function WorkOrderDetailClient({
                   <div className="text-xs text-ink-500">Advance status</div>
                   <div className="flex flex-wrap gap-2 justify-end">
                     {WO_TRANSITIONS[wo.status as WoStatus].length === 0 && (
-                      <span className="badge bg-emerald-100 text-emerald-700">
+                      <span className="pill pill-green">
                         Lifecycle complete
                       </span>
                     )}
@@ -438,11 +438,11 @@ export default function WorkOrderDetailClient({
                           </td>
                           <td className="td">
                             <span
-                              className={`badge ${
+                              className={
                                 j.status === "OutAtVendor"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-emerald-100 text-emerald-700"
-                              }`}
+                                  ? "pill pill-amber"
+                                  : "pill pill-green"
+                              }
                             >
                               {j.status}
                             </span>
