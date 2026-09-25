@@ -54,6 +54,7 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
   );
 
   const [tab, setTab] = useState<Tab>("floor");
+  const [q, setQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -85,7 +86,15 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
     }
   }
 
-  const cards = buckets[tab];
+  const cards = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return buckets[tab];
+    return buckets[tab].filter((w) =>
+      `${w.woNo} ${w.productName} ${w.sku ?? ""} ${w.customerRef}`
+        .toLowerCase()
+        .includes(needle)
+    );
+  }, [buckets, tab, q]);
 
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: "floor", label: "On the floor", count: buckets.floor.length },
@@ -129,34 +138,58 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
         <Tile n={all.length} label="Total WIP records" accent="#334155" />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === t.key
-                ? "bg-ink-900 text-white"
-                : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-100"
-            }`}
-          >
-            {t.label}
-            <span
-              className={`rounded px-1.5 text-xs tabular-nums ${
-                tab === t.key ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600"
+      {/* Tabs + search */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-1 overflow-x-auto">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
+                tab === t.key
+                  ? "bg-ink-900 text-white"
+                  : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-100"
               }`}
             >
-              {t.count}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                className={`rounded px-1.5 text-xs tabular-nums ${
+                  tab === t.key ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600"
+                }`}
+              >
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="relative ml-auto min-w-[12rem] flex-1 sm:max-w-xs sm:flex-none">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400">
+            <Icon name="trace" size={15} />
+          </span>
+          <input
+            className="input !w-full !pl-8 !pr-8"
+            placeholder="Search WO#, product, customer…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       <DataGate loading={loading} error={error} onReload={reload}>
         {cards.length === 0 ? (
           <div className="card py-16 text-center text-sm text-ink-400">
-            No jobs in this view.
+            {q ? `No jobs match “${q}”.` : "No jobs in this view."}
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
