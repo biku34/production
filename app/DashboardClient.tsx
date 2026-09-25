@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { getJSON } from "@/lib/client";
+import { getJSON, fmtNum } from "@/lib/client";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
-import { Stat } from "@/components/ui";
+import { Stat, StatusBadge } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
+import { useRole } from "@/components/RoleContext";
+import { canCreateWorkOrder } from "@/lib/access";
 import { Donut, BarList, StackBar, LegendRow, type Slice } from "@/components/charts";
 import {
   WO_STATUSES,
@@ -16,166 +18,310 @@ import {
   type WoStatus,
 } from "@/lib/domain";
 
-export interface Wip {
-  totalWo: number;
+/* --------------------------------- types ---------------------------------- */
+
+export interface Dashboard {
+  role: string;
+  roleLabel: string;
+  name: string;
+  scopeBlurb: string;
+  unrestricted: boolean;
+  totals: {
+    inScope: number; active: number; meters: number;
+    overdue: number; today: number; tomorrow: number; onTrack: number; closed: number;
+  };
   byStatus: Record<string, number>;
-  delivery: { overdue: number; today: number; tomorrow: number; closed: number };
-  lossByStage: {
-    _id: string;
-    totalLossQty: number;
-    avgLossPct: number;
-    flagged: number;
-    entries: number;
-  }[];
-  rollsByGrade: { _id: string; count: number; meters: number }[];
+  byProduct: { name: string; count: number; meters: number }[];
+  byCustomer: { name: string; count: number }[];
+  byPriority: { priority: string; count: number }[];
+  dueBuckets: { bucket: string; count: number }[];
+  qc?: { grades: { grade: string; count: number }[]; inspectedMeters: number; rejectRate: number; topDefects: { reason: string; qty: number }[] };
+  packing?: { rolls: { grade: string; count: number; meters: number }[]; totalRolls: number; metersPacked: number; ready: number; dispatched: number };
+  supervisor?: { machineLoad: { machine: string; entries: number; meters: number }[]; lossByStage: { stage: string; avgLossPct: number; flagged: number }[] };
+  jobwork?: { total: number; out: number; returned: number; byVendor: { vendor: string; count: number }[] };
+  store?: { byMaterial: { material: string; qty: number }[]; totalIssued: number; issueCount: number };
+  manager?: { lossByStage: { stage: string; avgLossPct: number; flagged: number }[]; rollsByGrade: { grade: string; count: number; meters: number }[] };
+  recent: { _id: string; woNo: string; status: string; customer: string; product: string; at: string }[];
 }
 
-const GRADE_COLORS: Record<string, string> = {
-  A: "#1c6f63",
-  B: "#f59e0b",
-  C: "#f97316",
-  Reject: "#dc2626",
-};
+const GRADE_COLORS: Record<string, string> = { A: "#1c6f63", B: "#f59e0b", C: "#f97316", Reject: "#dc2626" };
+const DUE_COLORS: Record<string, string> = { Overdue: "#dc2626", Today: "#d97706", Tomorrow: "#2563eb", Later: "#64748b" };
+const PALETTE = ["#1c6f63", "#3b82f6", "#8b5cf6", "#f59e0b", "#06b6d4", "#d946ef"];
 
-export default function DashboardClient({ initial }: { initial: Wip | null }) {
-  const { data, error, loading, reload } = useAsync<Wip>(
-    () => getJSON("/api/reports/wip"),
+/* ------------------------------- component -------------------------------- */
+
+export default function DashboardClient({ initial }: { initial: Dashboard | null }) {
+  const { role } = useRole();
+  const { data, error, loading, reload } = useAsync<Dashboard>(
+    () => getJSON("/api/dashboard"),
     [],
-    { cacheKey: "/api/reports/wip", initialData: initial ?? undefined }
+    { cacheKey: "/api/dashboard", initialData: initial ?? undefined }
   );
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Production Dashboard"
-        subtitle="What needs to be made, where it is, and whether it’s on schedule."
+        title={data ? `${greeting()}, ${firstName(data.name)}` : "Dashboard"}
+        subtitle={data ? `${data.roleLabel} · ${data.scopeBlurb}` : "Your production overview"}
         action={
-          <Link href="/work-orders/new" className="btn-primary">
-            <Icon name="plus" size={16} />
-            New Work Order
-          </Link>
+          canCreateWorkOrder(role) ? (
+            <Link href="/work-orders/new" className="btn-primary">
+              <Icon name="plus" size={16} />
+              New Work Order
+            </Link>
+          ) : undefined
         }
       />
 
       <DataGate loading={loading} error={error} onReload={reload}>
-        {data && <DashboardBody data={data} />}
+        {data && <Body data={data} />}
       </DataGate>
     </div>
   );
 }
 
-function DashboardBody({ data }: { data: Wip }) {
-  const statusSlices: Slice[] = WO_STATUSES.map((s) => ({
-    label: WO_STATUS_LABELS[s as WoStatus],
-    value: data.byStatus[s] || 0,
-    color: WO_STATUS_COLORS[s as WoStatus],
-  }));
-
-  const activeWo = data.totalWo - (data.byStatus["Closed"] || 0);
-
-  const lossSlices: Slice[] = data.lossByStage.map((l) => ({
-    label: STAGE_LABELS[l._id as keyof typeof STAGE_LABELS] || l._id,
-    value: Number((l.avgLossPct || 0).toFixed(1)),
-    color: l.flagged ? "#dc2626" : "#1c6f63",
-  }));
-
-  const gradeSlices: Slice[] = data.rollsByGrade.map((g) => ({
-    label: `Grade ${g._id}`,
-    value: g.count,
-    color: GRADE_COLORS[g._id] || "#71717a",
-  }));
-  const totalMeters = data.rollsByGrade.reduce((a, g) => a + g.meters, 0);
-  const totalRolls = data.rollsByGrade.reduce((a, g) => a + g.count, 0);
-
+function Body({ data }: { data: Dashboard }) {
+  const t = data.totals;
   return (
     <div className="space-y-5">
+      {/* Summary tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Total work orders" value={data.totalWo} hint={`${activeWo} active`} />
-        <Stat
-          label="Overdue"
-          value={data.delivery.overdue}
-          tone={data.delivery.overdue ? "danger" : "default"}
-          hint="not yet closed"
-        />
-        <Stat
-          label="Due today"
-          value={data.delivery.today}
-          tone={data.delivery.today ? "warn" : "default"}
-        />
-        <Stat label="Due tomorrow" value={data.delivery.tomorrow} />
-        <Stat label="Closed" value={data.delivery.closed} tone="good" />
+        <Stat label={data.unrestricted ? "Work orders" : "In my queue"} value={t.inScope} hint={`${t.active} active`} />
+        <Stat label="Overdue" value={t.overdue} tone={t.overdue ? "danger" : "default"} hint="not yet closed" />
+        <Stat label="Due today" value={t.today} tone={t.today ? "warn" : "default"} />
+        <Stat label="Due tomorrow" value={t.tomorrow} />
+        <RoleTile data={data} />
       </div>
 
+      {/* Spotlight + delivery outlook */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <div className="card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Work orders by status</h2>
-            <Link
-              href="/job-board"
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-            >
-              Job Board
-              <Icon name="chevronRight" size={14} />
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-6">
-            <div className="shrink-0">
-              <Donut
-                data={statusSlices}
-                centerValue={data.totalWo}
-                centerLabel="orders"
-              />
-            </div>
-            <div className="w-full flex-1 space-y-1.5">
-              {statusSlices.map((s) => (
-                <LegendRow key={s.label} color={s.color} label={s.label} value={s.value} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Wastage &amp; loss by stage</h2>
-            <span className="text-xs text-ink-400">avg %, flagged in red</span>
-          </div>
-          {lossSlices.length === 0 ? (
-            <p className="py-8 text-center text-sm text-ink-400">
-              No stage entries yet.
-            </p>
-          ) : (
-            <BarList data={lossSlices} valueSuffix="%" />
-          )}
-        </div>
+        <Spotlight data={data} />
+        <DeliveryCard data={data} />
       </div>
 
-      <div className="card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold">Finished output by grade</h2>
-          <span className="text-sm text-ink-500 tabular-nums">
-            {totalRolls} rolls · {totalMeters.toLocaleString("en-IN")} m
-          </span>
-        </div>
-        {gradeSlices.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-400">
-            No rolls packed yet.
-          </p>
+      {/* Product + customer breakdown */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card title="By product" hint={`${data.byProduct.length} products`}>
+          {data.byProduct.length === 0 ? (
+            <Empty />
+          ) : (
+            <BarList
+              data={data.byProduct.map((p, i) => ({ label: p.name, value: p.count, color: PALETTE[i % PALETTE.length] }))}
+            />
+          )}
+        </Card>
+        <Card title="By customer" hint={`${data.byCustomer.length} customers`}>
+          {data.byCustomer.length === 0 ? (
+            <Empty />
+          ) : (
+            <BarList
+              data={data.byCustomer.map((c, i) => ({ label: c.name, value: c.count, color: PALETTE[i % PALETTE.length] }))}
+            />
+          )}
+        </Card>
+      </div>
+
+      {/* Recent activity */}
+      <Card title="Recent activity" hint="latest updates in your scope">
+        {data.recent.length === 0 ? (
+          <Empty />
         ) : (
-          <div className="space-y-4">
-            <StackBar data={gradeSlices} />
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-              {data.rollsByGrade.map((g) => (
-                <LegendRow
-                  key={g._id}
-                  color={GRADE_COLORS[g._id] || "#71717a"}
-                  label={`Grade ${g._id}`}
-                  value={`${g.count} · ${g.meters.toFixed(0)}m`}
-                />
-              ))}
-            </div>
+          <div className="divide-y divide-ink-100">
+            {data.recent.map((r) => (
+              <Link
+                key={r._id}
+                href={`/work-orders/${r._id}`}
+                className="flex items-center justify-between gap-3 py-2.5 hover:bg-ink-50/60"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-brand-700">{r.woNo}</span>
+                    <StatusBadge status={r.status as WoStatus} />
+                  </div>
+                  <div className="truncate text-xs text-ink-500">
+                    {r.product} · {r.customer}
+                  </div>
+                </div>
+                <Icon name="chevronRight" size={15} className="shrink-0 text-ink-400" />
+              </Link>
+            ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
+}
+
+/* ------------------------------ role-specific ----------------------------- */
+
+function RoleTile({ data }: { data: Dashboard }) {
+  if (data.qc) return <Stat label="Reject rate" value={`${data.qc.rejectRate}%`} tone={data.qc.rejectRate > 3 ? "warn" : "good"} hint="of inspected meters" />;
+  if (data.packing) return <Stat label="Rolls packed" value={data.packing.totalRolls} tone="good" hint={`${fmtNum(data.packing.metersPacked)} m`} />;
+  if (data.supervisor) return <Stat label="Machines active" value={data.supervisor.machineLoad.length} hint={`${data.supervisor.machineLoad.reduce((a, m) => a + m.entries, 0)} entries`} />;
+  if (data.store) return <Stat label="Material issued" value={fmtNum(data.store.totalIssued)} hint={`${data.store.issueCount} issues`} />;
+  return <Stat label="Closed" value={data.totals.closed} tone="good" hint={`${fmtNum(data.totals.meters)} m total`} />;
+}
+
+function Spotlight({ data }: { data: Dashboard }) {
+  // QC — grade mix + defects
+  if (data.qc) {
+    const slices: Slice[] = data.qc.grades.map((g) => ({ label: `Grade ${g.grade}`, value: g.count, color: GRADE_COLORS[g.grade] || "#71717a" }));
+    return (
+      <Card title="Inspection quality" hint={`${data.qc.rejectRate}% reject`}>
+        {slices.length === 0 ? <Empty text="Nothing inspected yet." /> : (
+          <div className="space-y-4">
+            <StackBar data={slices} />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+              {slices.map((s) => <LegendRow key={s.label} color={s.color} label={s.label} value={s.value} />)}
+            </div>
+            {data.qc.topDefects.length > 0 && (
+              <div>
+                <div className="mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Top defects</div>
+                <BarList data={data.qc.topDefects.map((d, i) => ({ label: prettyReason(d.reason), value: Math.round(d.qty), color: PALETTE[i % PALETTE.length] }))} valueSuffix="m" />
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  // Packing / Dispatch — rolls + ready vs dispatched
+  if (data.packing) {
+    const slices: Slice[] = data.packing.rolls.map((g) => ({ label: `Grade ${g.grade}`, value: g.count, color: GRADE_COLORS[g.grade] || "#71717a" }));
+    return (
+      <Card title="Packed output & dispatch" hint={`${data.packing.totalRolls} rolls`}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat label="Ready to dispatch" value={data.packing.ready} color="#06b6d4" />
+            <MiniStat label="Dispatched / closed" value={data.packing.dispatched} color="#1c6f63" />
+          </div>
+          {slices.length === 0 ? <Empty text="No rolls packed yet." /> : (
+            <>
+              <StackBar data={slices} />
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                {data.packing.rolls.map((g) => (
+                  <LegendRow key={g.grade} color={GRADE_COLORS[g.grade] || "#71717a"} label={`Grade ${g.grade}`} value={`${g.count} · ${fmtNum(g.meters)}m`} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  // Supervisor / Job-work — machine load + loss
+  if (data.supervisor) {
+    return (
+      <Card title="Machine load & loss" hint="your production stage">
+        {data.supervisor.machineLoad.length === 0 ? <Empty text="No production entries yet." /> : (
+          <div className="space-y-4">
+            <BarList data={data.supervisor.machineLoad.map((m, i) => ({ label: m.machine, value: m.entries, color: PALETTE[i % PALETTE.length] }))} />
+            {data.supervisor.lossByStage.length > 0 && (
+              <div>
+                <div className="mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Avg loss by stage</div>
+                <BarList data={data.supervisor.lossByStage.map((l) => ({ label: STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] || l.stage, value: l.avgLossPct, color: l.flagged ? "#dc2626" : "#1c6f63" }))} valueSuffix="%" />
+              </div>
+            )}
+            {data.jobwork && (
+              <div className="grid grid-cols-3 gap-3">
+                <MiniStat label="Job-work total" value={data.jobwork.total} color="#8b5cf6" />
+                <MiniStat label="Out at vendor" value={data.jobwork.out} color="#f59e0b" />
+                <MiniStat label="Returned" value={data.jobwork.returned} color="#1c6f63" />
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  // Store — materials issued
+  if (data.store) {
+    return (
+      <Card title="Material issued" hint={`${data.store.issueCount} issue slips`}>
+        {data.store.byMaterial.length === 0 ? <Empty text="No materials issued yet." /> : (
+          <BarList data={data.store.byMaterial.map((m, i) => ({ label: m.material, value: m.qty, color: PALETTE[i % PALETTE.length] }))} valueSuffix=" kg" />
+        )}
+      </Card>
+    );
+  }
+
+  // Manager / Admin — full pipeline donut
+  const statusSlices: Slice[] = WO_STATUSES.map((s) => ({ label: WO_STATUS_LABELS[s as WoStatus], value: data.byStatus[s] || 0, color: WO_STATUS_COLORS[s as WoStatus] }));
+  return (
+    <Card title="Work orders by status" hint="whole pipeline">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-6">
+        <div className="shrink-0"><Donut data={statusSlices} centerValue={data.totals.inScope} centerLabel="orders" /></div>
+        <div className="w-full flex-1 space-y-1.5">
+          {statusSlices.map((s) => <LegendRow key={s.label} color={s.color} label={s.label} value={s.value} />)}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function DeliveryCard({ data }: { data: Dashboard }) {
+  const slices: Slice[] = data.dueBuckets.map((b) => ({ label: bucketLabel(b.bucket), value: b.count, color: DUE_COLORS[b.bucket] || "#64748b" }));
+  const anything = data.dueBuckets.some((b) => b.count > 0);
+  return (
+    <Card title="Delivery outlook" hint="active jobs by due date">
+      {!anything ? <Empty text="No active jobs." /> : (
+        <div className="space-y-4">
+          <BarList data={slices} />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-ink-100 pt-3">
+            {slices.map((s) => <LegendRow key={s.label} color={s.color} label={s.label} value={s.value} />)}
+            <LegendRow color="#1c6f63" label="Closed" value={data.totals.closed} />
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* -------------------------------- helpers --------------------------------- */
+
+function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="card p-5">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="font-semibold">{title}</h2>
+        {hint && <span className="text-xs text-ink-400">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MiniStat({ label, value, color }: { label: string; value: React.ReactNode; color: string }) {
+  return (
+    <div className="rounded-lg border border-ink-100 p-3" style={{ borderLeft: `3px solid ${color}` }}>
+      <div className="text-xl font-semibold tabular-nums text-ink-900">{value}</div>
+      <div className="text-[11px] text-ink-500">{label}</div>
+    </div>
+  );
+}
+
+function Empty({ text = "No data yet." }: { text?: string }) {
+  return <p className="py-8 text-center text-sm text-ink-400">{text}</p>;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+function firstName(name: string) {
+  return name.split(" ")[0];
+}
+function bucketLabel(b: string) {
+  switch (b) {
+    case "Overdue": return "Overdue";
+    case "Today": return "Due today";
+    case "Tomorrow": return "Due tomorrow";
+    default: return "Later / on track";
+  }
+}
+function prettyReason(code: string) {
+  return code.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }

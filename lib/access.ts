@@ -14,11 +14,23 @@ import type { Role, WoStatus } from "@/lib/domain";
 export const ROLE_MODULES: Record<Role, string[]> = {
   PlantAdmin: ["/", "/job-board", "/work-orders", "/machines", "/reports", "/trace", "/masters"],
   ProductionPlanner: ["/", "/job-board", "/work-orders", "/machines", "/reports", "/trace", "/masters"],
-  StoreKeeper: ["/job-board", "/work-orders"],
-  StageSupervisor: ["/job-board", "/work-orders", "/machines"],
-  QCInspector: ["/job-board", "/work-orders"],
-  JobWorkCoordinator: ["/job-board", "/work-orders"],
-  PackingDispatch: ["/job-board", "/work-orders"],
+  // Every role gets their own scoped dashboard at "/", plus their work modules.
+  StoreKeeper: ["/", "/job-board", "/work-orders"],
+  StageSupervisor: ["/", "/job-board", "/work-orders", "/machines"],
+  QCInspector: ["/", "/job-board", "/work-orders"],
+  JobWorkCoordinator: ["/", "/job-board", "/work-orders"],
+  PackingDispatch: ["/", "/job-board", "/work-orders"],
+};
+
+/** Short description of what a role's dashboard/queue covers. */
+export const ROLE_SCOPE_BLURB: Record<Role, string> = {
+  PlantAdmin: "All work orders across the plant",
+  ProductionPlanner: "All work orders across the plant",
+  StoreKeeper: "Orders awaiting material issue",
+  StageSupervisor: "Orders currently in production",
+  QCInspector: "Orders awaiting inspection",
+  JobWorkCoordinator: "Orders with outsourced (job-work) processing",
+  PackingDispatch: "Orders to pack, dispatch and close",
 };
 
 /** Only managers create work orders. */
