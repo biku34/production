@@ -6,7 +6,7 @@ import WorkOrder from "@/models/WorkOrder";
 import SalesOrder from "@/models/SalesOrder";
 import { createWorkOrder } from "@/lib/production";
 import { STAGE_TO_STATUS, type Stage } from "@/lib/domain";
-import { ROLE_STATUS_SCOPE, canCreateWorkOrder } from "@/lib/access";
+import { ROLE_STATUS_SCOPE, canCreateWorkOrder, assignedOwnerFor } from "@/lib/access";
 import { attachHandlers } from "@/lib/board-data";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,10 @@ export const GET = handle(async (req) => {
   // Role scope is the hard boundary — applied first, before any query params.
   const scope = ROLE_STATUS_SCOPE[session.role];
   if (scope !== null) filter.status = { $in: scope };
+
+  // Assigned-owner scope: a planner/manager only sees WOs assigned to them.
+  const ownerName = assignedOwnerFor(session.role, session.name);
+  if (ownerName) filter.assignedName = ownerName;
 
   // A specific status/stage filter may only narrow within the role's scope.
   const inScope = (s: string) => scope === null || scope.includes(s as any);

@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/mongoose";
 import { ok, fail, handle } from "@/lib/api";
 import { getSession } from "@/lib/auth-server";
-import { canSeeStatus } from "@/lib/access";
+import { canSeeStatus, assignedOwnerFor } from "@/lib/access";
 import "@/models";
 import WorkOrder from "@/models/WorkOrder";
 import StageEntry from "@/models/StageEntry";
@@ -26,6 +26,11 @@ export const GET = handle(async (_req, ctx) => {
   // A shop-floor role may only open a WO that has reached their stage.
   if (!canSeeStatus(session.role, wo.status)) {
     return fail("This work order is not at your stage.", 403);
+  }
+  // A planner/manager may only open WOs assigned to them.
+  const ownerName = assignedOwnerFor(session.role, session.name);
+  if (ownerName && wo.assignedName !== ownerName) {
+    return fail("This work order isn't assigned to you.", 403);
   }
 
   const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([

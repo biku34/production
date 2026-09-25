@@ -33,6 +33,15 @@ export const ROLE_SCOPE_BLURB: Record<Role, string> = {
   PackingDispatch: "Orders to pack, dispatch and close",
 };
 
+/**
+ * "Assigned owner" scope. A Planner/Manager sees only the work orders assigned
+ * to them (their own book of work); everyone else is scoped by stage/role only.
+ * Returns the assignedName to filter by, or null for no owner filter.
+ */
+export function assignedOwnerFor(role: Role, name: string): string | null {
+  return role === "ProductionPlanner" ? name : null;
+}
+
 /** Only managers create work orders. */
 export const WO_CREATE_ROLES: Role[] = ["PlantAdmin", "ProductionPlanner"];
 export function canCreateWorkOrder(role: Role | null | undefined): boolean {

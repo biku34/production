@@ -17,7 +17,7 @@ import { unstable_cache } from "next/cache";
 import { WO_STATUSES, deliveryFlag, ROLE_LABELS, type Role } from "@/lib/domain";
 import { round } from "@/lib/production";
 import { getSession } from "@/lib/auth-server";
-import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB } from "@/lib/access";
+import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB, assignedOwnerFor } from "@/lib/access";
 import { attachHandlers } from "@/lib/board-data";
 
 /**
@@ -60,9 +60,11 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 // Cached by role — the WO list for a given role scope (mirrors GET /api/work-orders).
-const cWorkOrders = readCache(async (role: Role) => {
+const cWorkOrders = readCache(async (role: Role, ownerName: string | null) => {
   const scope = ROLE_STATUS_SCOPE[role];
-  const filter = scope ? { status: { $in: scope } } : {};
+  const filter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
+  // Assigned-owner scope: a planner/manager only sees WOs assigned to them.
+  if (ownerName) filter.assignedName = ownerName;
   const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
   return plain(await attachHandlers(wos as any));
 }, "work-orders");
@@ -71,7 +73,7 @@ export const getWorkOrders = () =>
   safe(async () => {
     const session = await getSession();
     if (!session) return [];
-    return cWorkOrders(session.role);
+    return cWorkOrders(session.role, assignedOwnerFor(session.role, session.name));
   });
 
 // Cached by id — the WO detail is the same regardless of role; the role-based
@@ -99,6 +101,9 @@ export const getWorkOrderDetail = (id: string) =>
     // A shop-floor role may only open a WO that has reached their stage.
     const scope = ROLE_STATUS_SCOPE[session.role];
     if (scope && !scope.includes((data as any).workOrder.status)) return null;
+    // A planner/manager may only open WOs assigned to them.
+    const ownerName = assignedOwnerFor(session.role, session.name);
+    if (ownerName && (data as any).workOrder.assignedName !== ownerName) return null;
     return data;
   });
 
@@ -268,7 +273,7 @@ export const getDashboard = () =>
     if (!session) return null;
     // Planner/Manager dashboards are scoped to the WOs assigned to that person
     // ("their" orders); admin keeps full oversight; shop-floor keep stage scope.
-    const ownerName = session.role === "ProductionPlanner" ? session.name : null;
+    const ownerName = assignedOwnerFor(session.role, session.name);
     const data = await cDashboard(session.role, ownerName);
     if (!data) return null;
     // Inject per-user fields outside the (role-keyed) cache. When owner-scoped,
