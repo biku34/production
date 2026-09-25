@@ -21,7 +21,7 @@ const targets = [
 for (const t of targets) {
   await sharp(svg, { density: 384 })
     .resize(t.size, t.size)
-    .flatten({ background: "#0a6647" }) // no transparency (iOS-friendly)
+    .flatten({ background: "#18181b" }) // no transparency (iOS-friendly)
     .png()
     .toFile(join(outDir, t.name));
   console.log("wrote", t.name);

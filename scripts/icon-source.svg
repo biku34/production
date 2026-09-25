@@ -1,24 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f9d6a"/>
-      <stop offset="1" stop-color="#0a6647"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <!-- Fabric roll motif -->
-  <g transform="translate(256 256)">
-    <!-- roll body -->
-    <rect x="-150" y="-70" width="300" height="140" rx="20" fill="#ffffff" opacity="0.96"/>
-    <!-- roll end -->
-    <ellipse cx="-150" cy="0" rx="26" ry="70" fill="#d3ece4"/>
-    <ellipse cx="150" cy="0" rx="26" ry="70" fill="#eef7f4"/>
-    <!-- thread lines -->
-    <g stroke="#0b7d54" stroke-width="10" stroke-linecap="round" opacity="0.55">
-      <line x1="-120" y1="-38" x2="120" y2="-38"/>
-      <line x1="-120" y1="-12" x2="120" y2="-12"/>
-      <line x1="-120" y1="14" x2="120" y2="14"/>
-      <line x1="-120" y1="40" x2="120" y2="40"/>
-    </g>
+  <!-- Canonical app logo: the "spool" mark on the ink-900 square, matching the
+       in-app sidebar/header wordmark. Used for favicon, PWA icons and maskable. -->
+  <rect width="512" height="512" fill="#18181b"/>
+  <g transform="translate(112 112) scale(12)" fill="none" stroke="#ffffff"
+     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 4h10M7 20h10"/>
+    <path d="M8.5 4v16M15.5 4v16"/>
+    <path d="M8.5 9h7M8.5 12h7M8.5 15h7"/>
   </g>
 </svg>
