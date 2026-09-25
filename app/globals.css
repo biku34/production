@@ -11,20 +11,22 @@
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0b0b0f;
-  --surface: 23 23 27; /* raised panel (#17171b) */
-  --ink-950: 244 244 245;
-  --ink-900: 237 237 240;
-  --ink-800: 214 214 220;
-  --ink-700: 184 184 192;
-  --ink-600: 155 155 164;
-  --ink-500: 130 130 140;
-  --ink-400: 110 110 120;
-  --ink-300: 78 78 86;
-  --ink-200: 48 48 55;
-  --ink-100: 34 34 40;
-  --ink-50: 26 26 31;
-  --selection: #14413b;
+  /* Soft slate-grey dark theme — lighter than near-black so text and figures
+     read clearly, with raised panels a touch lighter than the page. */
+  --bg: #2a2c33;
+  --surface: 51 54 63; /* raised panel (#33363f) */
+  --ink-950: 250 250 251;
+  --ink-900: 242 243 246;
+  --ink-800: 228 229 234;
+  --ink-700: 206 208 216;
+  --ink-600: 180 183 194;
+  --ink-500: 152 155 167;
+  --ink-400: 124 127 140;
+  --ink-300: 96 99 112;
+  --ink-200: 74 77 89;
+  --ink-100: 61 64 75;
+  --ink-50: 47 50 59;
+  --selection: #1c5049;
   /* Brand — brightened for dark so links/buttons/icons read as "bright teal". */
   --brand-50: 16 43 39;
   --brand-100: 21 58 52;
