@@ -128,7 +128,7 @@ export default function WorkOrderDetailClient({
               </div>
 
               {/* Specs snapshot + routing */}
-              <div className="mt-4 grid md:grid-cols-2 gap-4">
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase text-ink-500 mb-2">
                     Specs snapshot
@@ -194,7 +194,7 @@ export default function WorkOrderDetailClient({
             </div>
 
             {/* Panels */}
-            <div className="grid lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {/* Stage entries */}
               <Panel title="Stage Entries — qty in/out & loss">
                 {data.stageEntries.length === 0 ? (
@@ -549,7 +549,8 @@ function Panel({
   return (
     <div className="card p-4">
       <h3 className="font-semibold mb-2 text-sm">{title}</h3>
-      {children}
+      {/* Keep wide tables inside their card on small screens (scroll, not overflow). */}
+      <div className="-mx-1 overflow-x-auto px-1">{children}</div>
     </div>
   );
 }

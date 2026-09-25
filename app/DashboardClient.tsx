@@ -130,7 +130,7 @@ function Body({ data }: { data: Dashboard }) {
         {data.recent.length === 0 ? (
           <Empty />
         ) : (
-          <div className="grid gap-x-8 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             {data.recent.map((r) => (
               <Link
                 key={r._id}
