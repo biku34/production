@@ -260,7 +260,7 @@ function StatusTab({
     <button
       onClick={onClick}
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium ${
-        active ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-ink-100"
+        active ? "bg-ink-900 text-ink-50" : "text-ink-600 hover:bg-ink-100"
       }`}
     >
       {!active && (
@@ -272,7 +272,7 @@ function StatusTab({
       <span className="whitespace-nowrap">{label}</span>
       <span
         className={`rounded px-1.5 text-xs tabular-nums ${
-          active ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600"
+          active ? "bg-ink-50/20 text-ink-50" : "bg-ink-100 text-ink-600"
         }`}
       >
         {count}
@@ -336,7 +336,7 @@ function ColumnsMenu({
                 <span
                   className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${
                     checked
-                      ? "border-brand-600 bg-brand-600 text-white"
+                      ? "border-brand-600 bg-brand-600 text-[#fff]"
                       : "border-ink-300"
                   }`}
                 >

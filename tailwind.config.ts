@@ -12,20 +12,23 @@ const config: Config = {
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
-        // Neutral base (warm-cool zinc)
+        // Neutral base — driven by CSS variables so the whole app flips between
+        // dark (default) and light themes. Values live in globals.css.
         ink: {
-          950: "#09090b",
-          900: "#18181b",
-          800: "#27272a",
-          700: "#3f3f46",
-          600: "#52525b",
-          500: "#71717a",
-          400: "#a1a1aa",
-          300: "#d4d4d8",
-          200: "#e4e4e7",
-          100: "#f4f4f5",
-          50: "#fafafa",
+          950: "rgb(var(--ink-950) / <alpha-value>)",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
+          400: "rgb(var(--ink-400) / <alpha-value>)",
+          300: "rgb(var(--ink-300) / <alpha-value>)",
+          200: "rgb(var(--ink-200) / <alpha-value>)",
+          100: "rgb(var(--ink-100) / <alpha-value>)",
+          50: "rgb(var(--ink-50) / <alpha-value>)",
         },
+        // Surface — "white" in light, a raised dark panel in dark.
+        white: "rgb(var(--surface) / <alpha-value>)",
         // Accent — deep petrol teal, used sparingly
         brand: {
           50: "#f0f9f7",

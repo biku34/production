@@ -169,7 +169,7 @@ export default function WorkOrdersClient({ initial }: { initial: Wo[] | null }) 
                 <Icon name="masters" size={16} />
                 Filters
                 {activeCount > 0 && (
-                  <span className="badge bg-ink-900 text-white">{activeCount}</span>
+                  <span className="badge bg-ink-900 text-ink-50">{activeCount}</span>
                 )}
               </span>
               <Icon

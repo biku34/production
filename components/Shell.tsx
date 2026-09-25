@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { prefetch } from "@/components/useAsync";
 import { getJSON, postJSON } from "@/lib/client";
 import { ROLE_LABELS, type Role } from "@/lib/domain";
@@ -71,7 +72,7 @@ function isActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="grid h-8 w-8 place-items-center rounded-md bg-ink-900 text-white">
+      <div className="grid h-8 w-8 place-items-center rounded-md bg-ink-900 text-ink-50">
         <Icon name="spool" size={17} />
       </div>
       <div className="leading-none">
@@ -116,7 +117,7 @@ function UserMenu() {
         </div>
       </div>
       <div
-        className="grid h-8 w-8 place-items-center rounded-full bg-ink-900 text-xs font-semibold text-white"
+        className="grid h-8 w-8 place-items-center rounded-full bg-ink-900 text-xs font-semibold text-ink-50"
         aria-hidden
       >
         {(user?.name ?? "?").slice(0, 1).toUpperCase()}
@@ -216,7 +217,10 @@ function Header() {
         <Wordmark />
       </div>
       <div className="hidden md:block" />
-      <UserMenu />
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <UserMenu />
+      </div>
     </header>
   );
 }

@@ -39,13 +39,20 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Runs before paint so the correct theme is applied with no flash. Dark is the
+// default; only a saved "light" choice switches it.
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <Shell>{children}</Shell>
         <ServiceWorker />

@@ -59,8 +59,8 @@ export function PriorityBadge({ priority }: { priority?: string }) {
   if (!priority || priority === "Normal") return null;
   const style =
     priority === "Rush"
-      ? "bg-red-600 text-white"
-      : "bg-amber-500 text-white";
+      ? "bg-red-600 text-[#fff]"
+      : "bg-amber-500 text-[#fff]";
   return <span className={`badge ${style}`}>{priority}</span>;
 }
 

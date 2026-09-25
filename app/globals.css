@@ -2,9 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/*
+ * Theme tokens. `:root` is DARK by default; `[data-theme="light"]` is the
+ * light override. The `ink` scale is inverted for dark (ink-900 = brightest
+ * text, ink-50 = faintest surface) so existing utility classes keep their
+ * meaning. Values are space-separated RGB triplets for Tailwind's <alpha-value>.
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0b0f;
+  --surface: 23 23 27; /* raised panel (#17171b) */
+  --ink-950: 244 244 245;
+  --ink-900: 237 237 240;
+  --ink-800: 214 214 220;
+  --ink-700: 184 184 192;
+  --ink-600: 155 155 164;
+  --ink-500: 130 130 140;
+  --ink-400: 110 110 120;
+  --ink-300: 78 78 86;
+  --ink-200: 48 48 55;
+  --ink-100: 34 34 40;
+  --ink-50: 26 26 31;
+  --selection: #14413b;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
   --bg: #f7f7f8;
-  --surface: #ffffff;
+  --surface: 255 255 255;
+  --ink-950: 9 9 11;
+  --ink-900: 24 24 27;
+  --ink-800: 39 39 42;
+  --ink-700: 63 63 70;
+  --ink-600: 82 82 91;
+  --ink-500: 113 113 122;
+  --ink-400: 161 161 170;
+  --ink-300: 212 212 216;
+  --ink-200: 228 228 231;
+  --ink-100: 244 244 245;
+  --ink-50: 250 250 250;
+  --selection: #d9efea;
 }
 
 html,
@@ -12,7 +50,7 @@ body {
   padding: 0;
   margin: 0;
   background: var(--bg);
-  color: #18181b;
+  color: rgb(var(--ink-900));
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -24,7 +62,7 @@ body {
 }
 
 ::selection {
-  background: #d9efea;
+  background: var(--selection);
 }
 
 @layer base {
@@ -45,13 +83,14 @@ body {
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors select-none;
   }
-  /* Primary = confident near-black */
+  /* Primary = high-contrast (near-black on light, near-white on dark). Uses
+     ink-50 for the label so it inverts opposite to the ink-900 background. */
   .btn-primary {
-    @apply btn bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950 disabled:opacity-40 disabled:pointer-events-none;
+    @apply btn bg-ink-900 text-ink-50 hover:bg-ink-800 active:bg-ink-950 disabled:opacity-40 disabled:pointer-events-none;
   }
-  /* Accent = teal, used for a few key affirmative actions */
+  /* Accent = teal (same in both themes) → always light label. */
   .btn-accent {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40;
+    @apply btn bg-brand-600 text-[#fff] hover:bg-brand-700 disabled:opacity-40;
   }
   .btn-ghost {
     @apply btn border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 hover:text-ink-900 disabled:opacity-40 disabled:pointer-events-none;

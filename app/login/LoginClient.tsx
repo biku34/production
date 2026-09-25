@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { postJSON } from "@/lib/client";
 import { Icon } from "@/components/Icon";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { DEMO_ACCOUNTS, DEFAULT_PASSWORD } from "@/lib/accounts";
 import { ROLE_LABELS } from "@/lib/domain";
 import { homeFor } from "@/lib/access";
@@ -40,12 +41,15 @@ export default function LoginClient() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-ink-50 p-4">
+    <div className="relative grid min-h-screen place-items-center bg-ink-50 p-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-pop md:grid md:grid-cols-[1.1fr_1fr]">
         {/* Left — sign-in form */}
         <div className="p-6 sm:p-8">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-ink-900 text-white">
+            <div className="grid h-9 w-9 place-items-center rounded-md bg-ink-900 text-ink-50">
               <Icon name="spool" size={19} />
             </div>
             <div className="leading-none">

@@ -150,14 +150,14 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
               onClick={() => setTab(t.key)}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
                 tab === t.key
-                  ? "bg-ink-900 text-white"
+                  ? "bg-ink-900 text-ink-50"
                   : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-100"
               }`}
             >
               {t.label}
               <span
                 className={`rounded px-1.5 text-xs tabular-nums ${
-                  tab === t.key ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600"
+                  tab === t.key ? "bg-ink-50/20 text-ink-50" : "bg-ink-100 text-ink-600"
                 }`}
               >
                 {t.count}
