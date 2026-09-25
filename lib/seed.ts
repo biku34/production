@@ -398,21 +398,31 @@ export async function seedDatabase() {
       const mWeave = round(qty * 0.97, 0);
       await stageEntry(wo, "Weaving", { qtyIn: kgIn, inUnit: "kg", qtyOut: mWeave, outUnit: "m", wastageQty: round(mWeave * 0.005, 0), machine: loom, operator: "Ramesh K", stdLossPct: 4, convOutPerIn: round(mWeave / kgIn, 2) });
 
-      if (idx >= 4) {
-        const jet = dyeingMachines[i % dyeingMachines.length];
-        const mDye = round(mWeave * 0.98, 0);
-        await stageEntry(wo, "Dyeing", { qtyIn: mWeave, inUnit: "m", qtyOut: mDye, outUnit: "m", wastageQty: round(mDye * 0.004, 0), machine: jet, operator: "Farah N", stdLossPct: 3 });
+      // Spread in-production WOs across weaving/dyeing/finishing so each stage
+      // supervisor has a real queue; later-stage WOs progress fully.
+      const progress = idx >= 4 ? 2 : i % 3; // 0=weaving, 1=dyeing, 2=finishing
 
-        const lot = await Lot.create({
+      let mDye = mWeave;
+      let lot: any = null;
+      if (progress >= 1) {
+        const jet = dyeingMachines[i % dyeingMachines.length];
+        mDye = round(mWeave * 0.98, 0);
+        await stageEntry(wo, "Dyeing", { qtyIn: mWeave, inUnit: "m", qtyOut: mDye, outUnit: "m", wastageQty: round(mDye * 0.004, 0), machine: jet, operator: "Farah N", stdLossPct: 3 });
+        lot = await Lot.create({
           lotNo: await nextId("LOT"), workOrder: wo._id, woNo: wo.woNo,
           shadeCode: `${SHADE_PREFIX[i % SHADE_PREFIX.length]}-${1000 + i}`,
           qty: mDye, unit: "m", stage: "Dyeing",
         });
+      }
 
+      let mFin = mDye;
+      if (progress >= 2) {
         const sten = finishingMachines[i % finishingMachines.length];
-        const mFin = round(mDye * 0.99, 0);
+        mFin = round(mDye * 0.99, 0);
         await stageEntry(wo, "Finishing", { qtyIn: mDye, inUnit: "m", qtyOut: mFin, outUnit: "m", wastageQty: round(mFin * 0.003, 0), machine: sten, operator: "Iqbal M", stdLossPct: 2 });
+      }
 
+      if (idx >= 4 && lot) {
         await QcInspection.create({
           workOrder: wo._id, woNo: wo.woNo, lot: lot._id, lotNo: lot.lotNo,
           inspectedQty: mFin, unit: "m", grade: i % 5 === 0 ? "B" : "A", result: "Pass",
@@ -465,6 +475,8 @@ export async function seedDatabase() {
       machine: o.machine._id, machineName: o.machine.name,
       shift: "A", date: new Date(), operatorName: o.operator,
     });
+    // Track the WO's current production stage (drives supervisor stage scope).
+    await WorkOrder.findByIdAndUpdate(wo._id, { currentStage: stage });
   }
 
   async function packRolls(wo: any, lot: any, rolls: { lengthM: number; grade: string }[]) {

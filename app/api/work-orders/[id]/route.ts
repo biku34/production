@@ -1,7 +1,7 @@
 import { dbConnect } from "@/lib/mongoose";
 import { ok, fail, handle } from "@/lib/api";
 import { getSession } from "@/lib/auth-server";
-import { canSeeStatus, assignedOwnerFor } from "@/lib/access";
+import { canSeeStatus, assignedOwnerFor, stageScopeFor } from "@/lib/access";
 import "@/models";
 import WorkOrder from "@/models/WorkOrder";
 import StageEntry from "@/models/StageEntry";
@@ -31,6 +31,11 @@ export const GET = handle(async (_req, ctx) => {
   const ownerName = assignedOwnerFor(session.role, session.name);
   if (ownerName && wo.assignedName !== ownerName) {
     return fail("This work order isn't assigned to you.", 403);
+  }
+  // A supervisor may only open WOs currently at their stage.
+  const stageScope = stageScopeFor(session.role, session.stages);
+  if (stageScope && wo.currentStage !== stageScope) {
+    return fail("This work order isn't at your stage.", 403);
   }
 
   const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([

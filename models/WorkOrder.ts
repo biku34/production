@@ -69,6 +69,9 @@ const WorkOrderSchema = new Schema(
 
     status: { type: String, enum: WO_STATUSES, default: "Created" },
     statusHistory: [StatusHistorySchema],
+    // The production stage the WO is currently at (latest stage entry). Drives
+    // stage-specific scoping for supervisors (weaving vs dyeing vs finishing).
+    currentStage: { type: String, enum: STAGES },
 
     overrideReason: { type: String }, // if routing/BOM overridden (FR-WO-4)
     notes: { type: String },

@@ -1,4 +1,4 @@
-import type { Role, WoStatus } from "@/lib/domain";
+import type { Role, WoStatus, Stage } from "@/lib/domain";
 
 /**
  * Access policy (SRS §2.3 / §4.4 FR-JB-3). Two dimensions:
@@ -40,6 +40,18 @@ export const ROLE_SCOPE_BLURB: Record<Role, string> = {
  */
 export function assignedOwnerFor(role: Role, name: string): string | null {
   return role === "ProductionPlanner" ? name : null;
+}
+
+/**
+ * Stage-specific scope. A Stage Supervisor only sees work orders currently at
+ * their own production stage (weaving vs dyeing vs finishing), not the whole
+ * production floor. Returns the stage to filter `currentStage` by, or null.
+ */
+export function stageScopeFor(
+  role: Role,
+  stages: Stage[] | undefined
+): Stage | null {
+  return role === "StageSupervisor" ? stages?.[0] ?? null : null;
 }
 
 /** Only managers create work orders. */

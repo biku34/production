@@ -14,10 +14,10 @@ import Vendor from "@/models/Vendor";
 import User from "@/models/User";
 import SalesOrder from "@/models/SalesOrder";
 import { unstable_cache } from "next/cache";
-import { WO_STATUSES, deliveryFlag, ROLE_LABELS, type Role } from "@/lib/domain";
+import { WO_STATUSES, STAGE_LABELS, deliveryFlag, ROLE_LABELS, type Role, type Stage } from "@/lib/domain";
 import { round } from "@/lib/production";
 import { getSession } from "@/lib/auth-server";
-import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB, assignedOwnerFor } from "@/lib/access";
+import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB, assignedOwnerFor, stageScopeFor } from "@/lib/access";
 import { attachHandlers } from "@/lib/board-data";
 
 /**
@@ -70,12 +70,14 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 // Cached by role — the WO list for a given role scope (mirrors GET /api/work-orders).
-const cWorkOrders = (role: Role, ownerName: string | null) =>
-  scopedRead(["work-orders", role, ownerName], async () => {
+const cWorkOrders = (role: Role, ownerName: string | null, stage: Stage | null) =>
+  scopedRead(["work-orders", role, ownerName, stage], async () => {
     const scope = ROLE_STATUS_SCOPE[role];
     const filter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
     // Assigned-owner scope: a planner/manager only sees WOs assigned to them.
     if (ownerName) filter.assignedName = ownerName;
+    // Stage scope: a supervisor only sees WOs currently at their stage.
+    if (stage) filter.currentStage = stage;
     const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
     return plain(await attachHandlers(wos as any));
   });
@@ -84,7 +86,11 @@ export const getWorkOrders = () =>
   safe(async () => {
     const session = await getSession();
     if (!session) return [];
-    return cWorkOrders(session.role, assignedOwnerFor(session.role, session.name));
+    return cWorkOrders(
+      session.role,
+      assignedOwnerFor(session.role, session.name),
+      stageScopeFor(session.role, session.stages)
+    );
   });
 
 // Cached by id — the WO detail is the same regardless of role; the role-based
@@ -116,6 +122,9 @@ export const getWorkOrderDetail = (id: string) =>
     // A planner/manager may only open WOs assigned to them.
     const ownerName = assignedOwnerFor(session.role, session.name);
     if (ownerName && (data as any).workOrder.assignedName !== ownerName) return null;
+    // A supervisor may only open WOs currently at their stage.
+    const stage = stageScopeFor(session.role, session.stages);
+    if (stage && (data as any).workOrder.currentStage !== stage) return null;
     return data;
   });
 
@@ -125,13 +134,15 @@ export const getWorkOrderDetail = (id: string) =>
  * block adds the metrics that matter to that role (QC grades, packed rolls,
  * machine load, material issues, or the full management view).
  */
-const cDashboard = (role: Role, ownerName: string | null) =>
-  scopedRead(["dashboard", role, ownerName], async () => {
+const cDashboard = (role: Role, ownerName: string | null, stage: Stage | null) =>
+  scopedRead(["dashboard", role, ownerName, stage], async () => {
     const scope = ROLE_STATUS_SCOPE[role];
     const woFilter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
     // "Assigned owner" scope: a planner/manager sees only the WOs assigned to
     // them (their own book of work), on top of any role status scope.
     if (ownerName) woFilter.assignedName = ownerName;
+    // Stage scope: a supervisor only sees WOs currently at their stage.
+    if (stage) woFilter.currentStage = stage;
     const wos = await WorkOrder.find(woFilter).sort({ updatedAt: -1 }).lean<any[]>();
     const ids = wos.map((w) => w._id);
 
@@ -287,15 +298,19 @@ export const getDashboard = () =>
     // Planner/Manager dashboards are scoped to the WOs assigned to that person
     // ("their" orders); admin keeps full oversight; shop-floor keep stage scope.
     const ownerName = assignedOwnerFor(session.role, session.name);
-    const data = await cDashboard(session.role, ownerName);
+    const stage = stageScopeFor(session.role, session.stages);
+    const data = await cDashboard(session.role, ownerName, stage);
     if (!data) return null;
-    // Inject per-user fields outside the (role-keyed) cache. When owner-scoped,
-    // relabel so the dashboard reads as "your" orders rather than "all".
+    // Inject per-user fields outside the (role-keyed) cache. Relabel the scope
+    // so the dashboard reads as "your"/"your stage" orders rather than "all".
     return {
       ...data,
       name: session.name,
       ...(ownerName
         ? { scopeBlurb: "Work orders assigned to you", unrestricted: false }
+        : {}),
+      ...(stage
+        ? { scopeBlurb: `Orders at the ${STAGE_LABELS[stage]} stage` }
         : {}),
     };
   });

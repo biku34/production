@@ -76,5 +76,8 @@ export const POST = handle(async (req) => {
     note: b.note,
   });
 
+  // Advance the WO's current production stage so stage-scoped views update.
+  await WorkOrder.findByIdAndUpdate(wo._id, { currentStage: b.stage });
+
   return created(entry);
 });
