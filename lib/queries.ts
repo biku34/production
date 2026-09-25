@@ -13,11 +13,29 @@ import Machine from "@/models/Machine";
 import Vendor from "@/models/Vendor";
 import User from "@/models/User";
 import SalesOrder from "@/models/SalesOrder";
-import { WO_STATUSES, deliveryFlag, ROLE_LABELS } from "@/lib/domain";
+import { unstable_cache } from "next/cache";
+import { WO_STATUSES, deliveryFlag, ROLE_LABELS, type Role } from "@/lib/domain";
 import { round } from "@/lib/production";
 import { getSession } from "@/lib/auth-server";
 import { ROLE_STATUS_SCOPE, ROLE_SCOPE_BLURB } from "@/lib/access";
 import { attachHandlers } from "@/lib/board-data";
+
+/**
+ * Read-through cache TTL (seconds). The heavy read queries below are cached in
+ * Next's Data Cache so repeated server renders reuse the result instead of a
+ * fresh Atlas round-trip, cutting first-load latency. Kept short so the live
+ * shop floor stays fresh; mutations tolerate up to this much staleness.
+ * Session/cookies are read OUTSIDE the cached functions (they can't run inside);
+ * role-scoped reads are keyed by role so scoping never leaks across roles.
+ */
+const READ_TTL = 20;
+
+function readCache<A extends unknown[], R>(
+  fn: (...args: A) => Promise<R>,
+  key: string
+) {
+  return unstable_cache(fn, [key], { revalidate: READ_TTL, tags: ["reads"] });
+}
 
 /**
  * Server-side data functions used by Server Components so the page renders with
@@ -41,35 +59,47 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
   }
 }
 
+// Cached by role — the WO list for a given role scope (mirrors GET /api/work-orders).
+const cWorkOrders = readCache(async (role: Role) => {
+  const scope = ROLE_STATUS_SCOPE[role];
+  const filter = scope ? { status: { $in: scope } } : {};
+  const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
+  return plain(await attachHandlers(wos as any));
+}, "work-orders");
+
 export const getWorkOrders = () =>
   safe(async () => {
-    // Data-scoped to the caller's role (mirrors GET /api/work-orders).
     const session = await getSession();
     if (!session) return [];
-    const scope = ROLE_STATUS_SCOPE[session.role];
-    const filter = scope ? { status: { $in: scope } } : {};
-    const wos = await WorkOrder.find(filter).sort({ createdAt: -1 }).lean();
-    return plain(await attachHandlers(wos as any));
+    return cWorkOrders(session.role);
   });
+
+// Cached by id — the WO detail is the same regardless of role; the role-based
+// access check stays outside the cache.
+const cWoDetail = readCache(async (id: string) => {
+  const wo = await WorkOrder.findById(id).lean<any>();
+  if (!wo) return null;
+  const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
+    StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),
+    MaterialIssue.find({ workOrder: id }).sort({ at: 1 }).lean(),
+    Lot.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
+    Roll.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
+    QcInspection.find({ workOrder: id }).sort({ at: 1 }).lean(),
+    JobworkDispatch.find({ workOrder: id }).sort({ dispatchedAt: 1 }).lean(),
+  ]);
+  return plain({ workOrder: wo, stageEntries, issues, lots, rolls, qc, jobwork });
+}, "wo-detail");
 
 export const getWorkOrderDetail = (id: string) =>
   safe(async () => {
     const session = await getSession();
     if (!session) return null;
-    const wo = await WorkOrder.findById(id).lean<any>();
-    if (!wo) return null;
+    const data = await cWoDetail(id);
+    if (!data) return null;
     // A shop-floor role may only open a WO that has reached their stage.
     const scope = ROLE_STATUS_SCOPE[session.role];
-    if (scope && !scope.includes(wo.status)) return null;
-    const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
-      StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),
-      MaterialIssue.find({ workOrder: id }).sort({ at: 1 }).lean(),
-      Lot.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
-      Roll.find({ workOrder: id }).sort({ createdAt: 1 }).lean(),
-      QcInspection.find({ workOrder: id }).sort({ at: 1 }).lean(),
-      JobworkDispatch.find({ workOrder: id }).sort({ dispatchedAt: 1 }).lean(),
-    ]);
-    return plain({ workOrder: wo, stageEntries, issues, lots, rolls, qc, jobwork });
+    if (scope && !scope.includes((data as any).workOrder.status)) return null;
+    return data;
   });
 
 /**
@@ -78,11 +108,7 @@ export const getWorkOrderDetail = (id: string) =>
  * block adds the metrics that matter to that role (QC grades, packed rolls,
  * machine load, material issues, or the full management view).
  */
-export const getDashboard = () =>
-  safe(async () => {
-    const session = await getSession();
-    if (!session) return null;
-    const role = session.role;
+const cDashboard = readCache(async (role: Role) => {
     const scope = ROLE_STATUS_SCOPE[role];
     const woFilter = scope ? { status: { $in: scope } } : {};
     const wos = await WorkOrder.find(woFilter).sort({ updatedAt: -1 }).lean<any[]>();
@@ -224,7 +250,6 @@ export const getDashboard = () =>
     return plain({
       role,
       roleLabel: ROLE_LABELS[role],
-      name: session.name,
       scopeBlurb: ROLE_SCOPE_BLURB[role],
       unrestricted: scope === null,
       totals: { inScope: wos.length, active, meters: Math.round(meters), overdue, today, tomorrow, onTrack, closed: byStatus["Closed"] || 0 },
@@ -232,10 +257,18 @@ export const getDashboard = () =>
       ...spotlight,
       recent,
     });
+}, "dashboard");
+
+export const getDashboard = () =>
+  safe(async () => {
+    const session = await getSession();
+    if (!session) return null;
+    const data = await cDashboard(session.role);
+    // Inject the per-user greeting name outside the (role-keyed) cache.
+    return data ? { ...data, name: session.name } : null;
   });
 
-export const getWipReport = () =>
-  safe(async () => {
+const cWipReport = readCache(async () => {
     const wos = await WorkOrder.find().lean<any[]>();
     const byStatus: Record<string, number> = {};
     for (const s of WO_STATUSES) byStatus[s] = 0;
@@ -274,49 +307,57 @@ export const getWipReport = () =>
       lossByStage,
       rollsByGrade,
     });
-  });
+}, "wip-report");
+export const getWipReport = () => safe(() => cWipReport());
 
-export const getProducts = () =>
-  safe(async () =>
+const cProducts = readCache(
+  async () =>
+    plain(await Product.find().sort({ name: 1 }).populate("boms.lines.material").lean()),
+  "products"
+);
+export const getProducts = () => safe(() => cProducts());
+
+const cMaterials = readCache(
+  async () => plain(await Material.find().sort({ name: 1 }).lean()),
+  "materials"
+);
+export const getMaterials = () => safe(() => cMaterials());
+
+const cVendors = readCache(
+  async () => plain(await Vendor.find().sort({ name: 1 }).lean()),
+  "vendors"
+);
+export const getVendors = () => safe(() => cVendors());
+
+const cUsers = readCache(
+  async () => plain(await User.find({ active: true }).sort({ name: 1 }).lean()),
+  "users"
+);
+export const getUsers = () => safe(() => cUsers());
+
+const cSalesOrders = readCache(
+  async () =>
     plain(
-      await Product.find().sort({ name: 1 }).populate("boms.lines.material").lean()
-    )
+      await SalesOrder.find().sort({ createdAt: -1 }).populate("product", "name sku").lean()
+    ),
+  "sales-orders"
+);
+export const getSalesOrders = () => safe(() => cSalesOrders());
+
+const cJobwork = readCache(
+  async () => plain(await JobworkDispatch.find().sort({ dispatchedAt: -1 }).lean()),
+  "jobwork"
+);
+export const getJobwork = () => safe(() => cJobwork());
+
+const cMachinesWithQueue = readCache(async () => {
+  const rows = await Machine.find().sort({ code: 1 }).lean<any[]>();
+  const queues = await StageEntry.aggregate([
+    { $group: { _id: "$machine", entries: { $sum: 1 }, lastDate: { $max: "$date" } } },
+  ]);
+  const byId = new Map(queues.map((q) => [String(q._id), q]));
+  return plain(
+    rows.map((m) => ({ ...m, queue: byId.get(String(m._id)) || { entries: 0 } }))
   );
-
-export const getMaterials = () =>
-  safe(async () => plain(await Material.find().sort({ name: 1 }).lean()));
-
-export const getVendors = () =>
-  safe(async () => plain(await Vendor.find().sort({ name: 1 }).lean()));
-
-export const getUsers = () =>
-  safe(async () =>
-    plain(await User.find({ active: true }).sort({ name: 1 }).lean())
-  );
-
-export const getSalesOrders = () =>
-  safe(async () =>
-    plain(
-      await SalesOrder.find()
-        .sort({ createdAt: -1 })
-        .populate("product", "name sku")
-        .lean()
-    )
-  );
-
-export const getJobwork = () =>
-  safe(async () =>
-    plain(await JobworkDispatch.find().sort({ dispatchedAt: -1 }).lean())
-  );
-
-export const getMachinesWithQueue = () =>
-  safe(async () => {
-    const rows = await Machine.find().sort({ code: 1 }).lean<any[]>();
-    const queues = await StageEntry.aggregate([
-      { $group: { _id: "$machine", entries: { $sum: 1 }, lastDate: { $max: "$date" } } },
-    ]);
-    const byId = new Map(queues.map((q) => [String(q._id), q]));
-    return plain(
-      rows.map((m) => ({ ...m, queue: byId.get(String(m._id)) || { entries: 0 } }))
-    );
-  });
+}, "machines-queue");
+export const getMachinesWithQueue = () => safe(() => cMachinesWithQueue());
