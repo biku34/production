@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { prefetch } from "@/components/useAsync";
 import { getJSON, postJSON } from "@/lib/client";
 import { ROLE_LABELS, type Role } from "@/lib/domain";
@@ -217,10 +216,7 @@ function Header() {
         <Wordmark />
       </div>
       <div className="hidden md:block" />
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
-        <UserMenu />
-      </div>
+      <UserMenu />
     </header>
   );
 }

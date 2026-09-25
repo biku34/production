@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { postJSON } from "@/lib/client";
 import { Icon } from "@/components/Icon";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { DEMO_ACCOUNTS, DEFAULT_PASSWORD } from "@/lib/accounts";
 import { ROLE_LABELS } from "@/lib/domain";
 import { homeFor } from "@/lib/access";
@@ -41,10 +40,7 @@ export default function LoginClient() {
   }
 
   return (
-    <div className="relative grid min-h-screen place-items-center bg-ink-50 p-4">
-      <div className="absolute right-4 top-4">
-        <ThemeToggle />
-      </div>
+    <div className="grid min-h-screen place-items-center bg-ink-50 p-4">
       <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-pop md:grid md:grid-cols-[1.1fr_1fr]">
         {/* Left — sign-in form */}
         <div className="p-6 sm:p-8">
