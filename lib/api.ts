@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 export function ok(data: unknown, init?: number) {
   return NextResponse.json({ ok: true, data }, { status: init ?? 200 });
@@ -18,7 +19,14 @@ export function handle(
 ) {
   return async (req: Request, ctx: any) => {
     try {
-      return await fn(req, ctx);
+      const res = await fn(req, ctx);
+      // Any successful mutation invalidates the cached read queries (tag
+      // "reads"), so the next server render pulls fresh data instead of waiting
+      // out the TTL. GETs stay cached.
+      if (res.ok && req.method !== "GET" && req.method !== "HEAD") {
+        revalidateTag("reads");
+      }
+      return res;
     } catch (err: any) {
       console.error("[api error]", err?.message || err);
       const msg =
