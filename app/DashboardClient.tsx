@@ -118,9 +118,9 @@ function Body({ data }: { data: Dashboard }) {
           {data.byCustomer.length === 0 ? (
             <Empty />
           ) : (
-            <ColumnChart
-              data={data.byCustomer.map((c, i) => ({ label: c.name, value: c.count, color: PALETTE[i % PALETTE.length] }))}
-              height={48}
+            <RankedList
+              items={data.byCustomer.map((c) => ({ label: c.name, value: c.count }))}
+              color="#3b82f6"
             />
           )}
         </Card>
@@ -296,8 +296,14 @@ function Spotlight({ data }: { data: Dashboard }) {
               const loadSlices: Slice[] = data.supervisor!.machineLoad.map((m, i) => ({ label: m.machine, value: m.entries, color: PALETTE[i % PALETTE.length] }));
               const lossSlices: Slice[] = data.supervisor!.lossByStage.map((l) => ({ label: STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] || l.stage, value: l.avgLossPct, color: l.flagged ? "#dc2626" : "#1c6f63" }));
               return (
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <PieBlock title="Machine load" subtitle="entries per machine" slices={loadSlices} />
+                <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                  <div>
+                    <div className="text-sm font-semibold text-ink-900">
+                      Machine load
+                    </div>
+                    <div className="mb-3 text-xs text-ink-400">entries per machine</div>
+                    <BarList data={loadSlices} />
+                  </div>
                   {lossSlices.length > 0 && (
                     <div>
                       <div className="text-sm font-semibold text-ink-900">
@@ -406,6 +412,41 @@ function DeliveryCard({ data }: { data: Dashboard }) {
 }
 
 /* -------------------------------- helpers --------------------------------- */
+
+/** Compact ranked rows: position + name + thin bar + value. Space-efficient and
+ *  readable even when values are equal (unlike a column chart of all-1s). */
+function RankedList({
+  items,
+  color = "#1c6f63",
+}: {
+  items: { label: string; value: number }[];
+  color?: string;
+}) {
+  const max = Math.max(1, ...items.map((i) => i.value));
+  return (
+    <div className="space-y-2.5">
+      {items.map((it, i) => (
+        <div key={it.label} className="flex items-center gap-3">
+          <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-ink-400">
+            {i + 1}
+          </span>
+          <span className="w-28 shrink-0 truncate text-sm text-ink-800 sm:w-36">
+            {it.label}
+          </span>
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-ink-100">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${(it.value / max) * 100}%`, backgroundColor: color }}
+            />
+          </div>
+          <span className="w-8 shrink-0 text-right text-sm font-medium tabular-nums text-ink-900">
+            {it.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
