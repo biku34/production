@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Module-level cache shared across the SPA session. Keyed by a stable string
  * (usually the request URL). Enables stale-while-revalidate: revisiting a page
- * shows cached data instantly, then refreshes in the background — so switching
- * modules feels instant instead of re-loading from the DB every time.
+ * shows cached data instantly, then refreshes in the background.
  */
 const cache = new Map<string, unknown>();
 
@@ -16,7 +15,7 @@ export function getCached<T>(key: string): T | undefined {
 
 /** Warm the cache ahead of navigation (e.g. on link hover). Errors are ignored. */
 export async function prefetch<T>(key: string, fn: () => Promise<T>): Promise<void> {
-  if (cache.has(key)) return; // already warm
+  if (cache.has(key)) return;
   try {
     cache.set(key, await fn());
   } catch {
@@ -24,34 +23,46 @@ export async function prefetch<T>(key: string, fn: () => Promise<T>): Promise<vo
   }
 }
 
-/** Invalidate one key or all keys after a mutation. */
 export function invalidate(key?: string) {
   if (key) cache.delete(key);
   else cache.clear();
 }
 
-interface Options {
+interface Options<T> {
   /** Stable cache key (usually the URL). Omit to disable caching. */
   cacheKey?: string;
+  /** Server-rendered data — seeds the view so there is no load spinner. */
+  initialData?: T;
 }
 
 export function useAsync<T>(
   fn: () => Promise<T>,
   deps: unknown[] = [],
-  opts: Options = {}
+  opts: Options<T> = {}
 ) {
   const key = opts.cacheKey;
-  const initial = key ? (cache.get(key) as T | undefined) : undefined;
+  const seed =
+    (key && cache.has(key) ? (cache.get(key) as T) : undefined) ??
+    opts.initialData;
 
-  const [data, setData] = useState<T | null>(initial ?? null);
+  const [data, setData] = useState<T | null>(seed ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(initial === undefined);
+  const [loading, setLoading] = useState<boolean>(seed === undefined);
+
+  // Seed the shared cache from server-provided initial data (once), so
+  // client-side navigation back to this view is instant.
+  if (key && !cache.has(key) && opts.initialData !== undefined) {
+    cache.set(key, opts.initialData);
+  }
+
+  // Skip the fetch on the very first mount when the server already gave us data;
+  // still revalidate on later dependency changes (filters) or explicit reload().
+  const skipFirst = useRef(opts.initialData !== undefined);
 
   const run = useCallback(async () => {
-    const cached = key ? cache.has(key) : false;
-    if (cached) {
-      // Show cached immediately; revalidate silently (no loading flash).
-      setData(cache.get(key!) as T);
+    const haveData = (key && cache.has(key)) || opts.initialData !== undefined;
+    if (haveData) {
+      if (key && cache.has(key)) setData(cache.get(key) as T);
       setLoading(false);
     } else {
       setLoading(true);
@@ -62,7 +73,7 @@ export function useAsync<T>(
       setData(result);
       if (key) cache.set(key, result);
     } catch (e: any) {
-      if (!cached) setError(e?.message || "Something went wrong");
+      if (!haveData) setError(e?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -70,6 +81,10 @@ export function useAsync<T>(
   }, deps);
 
   useEffect(() => {
+    if (skipFirst.current) {
+      skipFirst.current = false;
+      return;
+    }
     run();
   }, [run]);
 
