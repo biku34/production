@@ -102,8 +102,9 @@ function Body({ data }: { data: Dashboard }) {
       {/* Manager / admin: loss + grade mix + priority (varied chart types) */}
       {data.manager && <ManagerExtras m={data.manager} priority={data.byPriority} />}
 
-      {/* Product (bars) + customer (ranked) — two different treatments */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      {/* Product (bars) + customer (compact columns) — top-aligned so the
+          shorter customer chart doesn't stretch to fill wasted space. */}
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         <Card title="Top products" hint={`${data.byProduct.length} products`}>
           {data.byProduct.length === 0 ? (
             <Empty />
@@ -119,6 +120,7 @@ function Body({ data }: { data: Dashboard }) {
           ) : (
             <ColumnChart
               data={data.byCustomer.map((c, i) => ({ label: c.name, value: c.count, color: PALETTE[i % PALETTE.length] }))}
+              height={48}
             />
           )}
         </Card>
@@ -297,7 +299,15 @@ function Spotlight({ data }: { data: Dashboard }) {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <PieBlock title="Machine load" subtitle="entries per machine" slices={loadSlices} />
                   {lossSlices.length > 0 && (
-                    <PieBlock title="Loss by stage" subtitle="avg %" slices={lossSlices} valueSuffix="%" />
+                    <div>
+                      <div className="text-sm font-semibold text-ink-900">
+                        Loss by stage
+                      </div>
+                      <div className="mb-3 text-xs text-ink-400">
+                        avg %, flagged in red
+                      </div>
+                      <BarList data={lossSlices} valueSuffix="%" />
+                    </div>
                   )}
                 </div>
               );
