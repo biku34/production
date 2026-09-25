@@ -7,7 +7,17 @@ import { RoleProvider, useRole } from "@/components/RoleContext";
 import { Icon, type IconName } from "@/components/Icon";
 import { prefetch } from "@/components/useAsync";
 import { getJSON, postJSON } from "@/lib/client";
-import { ROLE_LABELS } from "@/lib/domain";
+import { ROLE_LABELS, type Role } from "@/lib/domain";
+import { canAccessPath } from "@/lib/access";
+
+/** Nav items this role may open (children filtered too). */
+function navFor(role: Role | null): NavItem[] {
+  if (!role) return [];
+  return NAV.filter((n) => canAccessPath(role, n.href)).map((n) => ({
+    ...n,
+    children: n.children?.filter((c) => canAccessPath(role, c.href)),
+  }));
+}
 
 type NavItem = {
   href: string;
@@ -126,6 +136,8 @@ function UserMenu() {
 
 function Sidebar() {
   const pathname = usePathname();
+  const { role } = useRole();
+  const items = navFor(role);
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-200 bg-white md:flex">
       <div className="px-4 py-4">
@@ -135,7 +147,7 @@ function Sidebar() {
         <div className="px-2 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
           Shop floor
         </div>
-        {NAV.map((n) => {
+        {items.map((n) => {
           const branchActive = isActive(pathname, n.href);
           // With children, the parent highlights only on its exact route so the
           // active child gets its own highlight.
@@ -211,8 +223,10 @@ function Header() {
 
 function MobileNav() {
   const pathname = usePathname();
+  const { role } = useRole();
   const [moreOpen, setMoreOpen] = useState(false);
-  const primary = NAV.filter((n) => MOBILE_PRIMARY.includes(n.href));
+  const items = navFor(role);
+  const primary = items.filter((n) => MOBILE_PRIMARY.includes(n.href));
 
   return (
     <>
@@ -228,7 +242,7 @@ function MobileNav() {
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-ink-200" />
             <div className="section-title mb-2">All sections</div>
             <div className="grid grid-cols-3 gap-2">
-              {NAV.flatMap((n) => [n, ...(n.children || [])]).map((n) => {
+              {items.flatMap((n) => [n, ...(n.children || [])]).map((n) => {
                 const active =
                   n.href === "/job-board"
                     ? pathname === "/job-board"

@@ -12,6 +12,8 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { Icon } from "@/components/Icon";
+import { useRole } from "@/components/RoleContext";
+import { canCreateWorkOrder } from "@/lib/access";
 import {
   WO_STATUSES,
   WO_STATUS_LABELS,
@@ -48,6 +50,7 @@ const EMPTY = {
 type Filters = typeof EMPTY;
 
 export default function WorkOrdersClient({ initial }: { initial: Wo[] | null }) {
+  const { role } = useRole();
   const { data, error, loading, reload } = useAsync<Wo[]>(
     () => getJSON("/api/work-orders"),
     [],
@@ -108,11 +111,13 @@ export default function WorkOrdersClient({ initial }: { initial: Wo[] | null }) 
               </button>
             ))}
           </div>
-          <Link href="/work-orders/new" className="btn-primary">
-            <Icon name="plus" size={16} />
-            <span className="hidden sm:inline">New Work Order</span>
-            <span className="sm:hidden">New</span>
-          </Link>
+          {canCreateWorkOrder(role) && (
+            <Link href="/work-orders/new" className="btn-primary">
+              <Icon name="plus" size={16} />
+              <span className="hidden sm:inline">New Work Order</span>
+              <span className="sm:hidden">New</span>
+            </Link>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 import { dbConnect } from "@/lib/mongoose";
 import { ok, fail, handle } from "@/lib/api";
+import { getSession } from "@/lib/auth-server";
+import { canSeeStatus } from "@/lib/access";
 import "@/models";
 import WorkOrder from "@/models/WorkOrder";
 import StageEntry from "@/models/StageEntry";
@@ -13,10 +15,18 @@ export const dynamic = "force-dynamic";
 
 // GET /api/work-orders/:id  -> WO + all related production records
 export const GET = handle(async (_req, ctx) => {
+  const session = await getSession();
+  if (!session) return fail("Not authenticated", 401);
+
   await dbConnect();
   const { id } = await ctx.params;
   const wo = await WorkOrder.findById(id).lean<any>();
   if (!wo) return fail("Work order not found", 404);
+
+  // A shop-floor role may only open a WO that has reached their stage.
+  if (!canSeeStatus(session.role, wo.status)) {
+    return fail("This work order is not at your stage.", 403);
+  }
 
   const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
     StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),

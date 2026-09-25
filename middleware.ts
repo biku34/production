@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
+import { canAccessPath, homeFor } from "@/lib/access";
 
 /**
- * Route protection. Unauthenticated users are bounced to /login; an authed
- * user visiting /login is sent home. API routes are excluded here (the ones
- * that mutate enforce their own session check) so /api/auth/login stays
- * reachable while logged out.
+ * Route protection + per-role module access. Unauthenticated users are bounced
+ * to /login; an authed user visiting /login (or a module their role can't open)
+ * is sent to their home. API routes are excluded here (the ones that mutate
+ * enforce their own session + scope check) so /api/auth/login stays reachable.
  */
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -13,7 +14,7 @@ export async function middleware(req: NextRequest) {
   const session = await verifySession(token);
 
   if (pathname === "/login") {
-    if (session) return NextResponse.redirect(new URL("/", req.url));
+    if (session) return NextResponse.redirect(new URL(homeFor(session.role), req.url));
     return NextResponse.next();
   }
 
@@ -21,6 +22,11 @@ export async function middleware(req: NextRequest) {
     const url = new URL("/login", req.url);
     if (pathname !== "/") url.searchParams.set("next", pathname + search);
     return NextResponse.redirect(url);
+  }
+
+  // Role can't open this module → send to their own home.
+  if (!canAccessPath(session.role, pathname)) {
+    return NextResponse.redirect(new URL(homeFor(session.role), req.url));
   }
 
   return NextResponse.next();

@@ -1,15 +1,22 @@
 import { dbConnect } from "@/lib/mongoose";
 import { ok, created, fail, handle } from "@/lib/api";
+import { getSession } from "@/lib/auth-server";
 import "@/models"; // register all schemas
 import WorkOrder from "@/models/WorkOrder";
 import SalesOrder from "@/models/SalesOrder";
 import { createWorkOrder } from "@/lib/production";
 import { STAGE_TO_STATUS, type Stage } from "@/lib/domain";
+import { ROLE_STATUS_SCOPE, canCreateWorkOrder } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/work-orders?status=&stage=&customer=&q=
+// Data-scoped to the caller's role: a shop-floor role only sees the work
+// orders that have reached their stage (SRS §4.4 FR-JB-3, §2.3).
 export const GET = handle(async (req) => {
+  const session = await getSession();
+  if (!session) return fail("Not authenticated", 401);
+
   await dbConnect();
   const url = new URL(req.url);
   const status = url.searchParams.get("status");
@@ -18,9 +25,17 @@ export const GET = handle(async (req) => {
   const q = url.searchParams.get("q");
 
   const filter: Record<string, unknown> = {};
-  if (status) filter.status = status;
-  // Role-scoped board: a stage supervisor sees only WOs in their stage's status.
-  if (stage && STAGE_TO_STATUS[stage]) filter.status = STAGE_TO_STATUS[stage];
+
+  // Role scope is the hard boundary — applied first, before any query params.
+  const scope = ROLE_STATUS_SCOPE[session.role];
+  if (scope !== null) filter.status = { $in: scope };
+
+  // A specific status/stage filter may only narrow within the role's scope.
+  const inScope = (s: string) => scope === null || scope.includes(s as any);
+  if (status && inScope(status)) filter.status = status;
+  if (stage && STAGE_TO_STATUS[stage] && inScope(STAGE_TO_STATUS[stage]))
+    filter.status = STAGE_TO_STATUS[stage];
+
   if (customer) filter.customerRef = new RegExp(customer, "i");
   if (q)
     filter.$or = [
@@ -35,6 +50,11 @@ export const GET = handle(async (req) => {
 
 // POST /api/work-orders  { productId, targetQty, ... } | { salesOrderId }
 export const POST = handle(async (req) => {
+  const session = await getSession();
+  if (!session) return fail("Not authenticated", 401);
+  if (!canCreateWorkOrder(session.role))
+    return fail("Only a Production Planner / Manager can create work orders", 403);
+
   await dbConnect();
   const body = await req.json();
 

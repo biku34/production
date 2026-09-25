@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { getJSON, postJSON, fmtDate, fmtNum } from "@/lib/client";
+import { canSeeStatus, homeFor } from "@/lib/access";
 import { useAsync } from "@/components/useAsync";
 import { DataGate } from "@/components/DataGate";
 import {
@@ -34,6 +36,7 @@ export default function WorkOrderDetailClient({
   initial: any;
 }) {
   const { role } = useRole();
+  const router = useRouter();
   const { data, error, loading, reload } = useAsync<any>(
     () => getJSON(`/api/work-orders/${id}`),
     [id],
@@ -46,6 +49,12 @@ export default function WorkOrderDetailClient({
     setBusy(true);
     try {
       await postJSON(`/api/work-orders/${id}/transition`, { to });
+      // If this hand-off moves the WO out of the current role's stage, it
+      // leaves their queue — go back to their board instead of a 403 reload.
+      if (role && !canSeeStatus(role, to)) {
+        router.replace(homeFor(role));
+        return;
+      }
       await reload();
     } catch (e: any) {
       alert(e?.message);

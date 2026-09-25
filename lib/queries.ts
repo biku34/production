@@ -14,6 +14,8 @@ import Vendor from "@/models/Vendor";
 import User from "@/models/User";
 import SalesOrder from "@/models/SalesOrder";
 import { WO_STATUSES, deliveryFlag } from "@/lib/domain";
+import { getSession } from "@/lib/auth-server";
+import { ROLE_STATUS_SCOPE } from "@/lib/access";
 
 /**
  * Server-side data functions used by Server Components so the page renders with
@@ -38,12 +40,24 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 export const getWorkOrders = () =>
-  safe(async () => plain(await WorkOrder.find().sort({ createdAt: -1 }).lean()));
+  safe(async () => {
+    // Data-scoped to the caller's role (mirrors GET /api/work-orders).
+    const session = await getSession();
+    if (!session) return [];
+    const scope = ROLE_STATUS_SCOPE[session.role];
+    const filter = scope ? { status: { $in: scope } } : {};
+    return plain(await WorkOrder.find(filter).sort({ createdAt: -1 }).lean());
+  });
 
 export const getWorkOrderDetail = (id: string) =>
   safe(async () => {
+    const session = await getSession();
+    if (!session) return null;
     const wo = await WorkOrder.findById(id).lean<any>();
     if (!wo) return null;
+    // A shop-floor role may only open a WO that has reached their stage.
+    const scope = ROLE_STATUS_SCOPE[session.role];
+    if (scope && !scope.includes(wo.status)) return null;
     const [stageEntries, issues, lots, rolls, qc, jobwork] = await Promise.all([
       StageEntry.find({ workOrder: id }).sort({ date: 1 }).lean(),
       MaterialIssue.find({ workOrder: id }).sort({ at: 1 }).lean(),

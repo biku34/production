@@ -6,6 +6,7 @@ import { postJSON } from "@/lib/client";
 import { Icon } from "@/components/Icon";
 import { DEMO_ACCOUNTS, DEFAULT_PASSWORD } from "@/lib/accounts";
 import { ROLE_LABELS } from "@/lib/domain";
+import { homeFor } from "@/lib/access";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -22,8 +23,9 @@ export default function LoginClient() {
     setBusy(true);
     setError(null);
     try {
-      await postJSON("/api/auth/login", { username, password });
-      router.replace(next);
+      const user = await postJSON("/api/auth/login", { username, password });
+      const dest = next && next !== "/" ? next : homeFor(user.role);
+      router.replace(dest);
       router.refresh();
     } catch (err: any) {
       setError(err?.message || "Sign in failed");

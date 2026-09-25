@@ -17,6 +17,7 @@ import {
   type Role,
   type WoStatus,
 } from "@/lib/domain";
+import { canCreateWorkOrder } from "@/lib/access";
 import { JobBoardTabs } from "../JobBoardTabs";
 import { type JobWo, daysLeftLabel } from "../board-utils";
 
@@ -109,10 +110,12 @@ export default function CockpitClient({ initial }: { initial: JobWo[] | null }) 
         title="WIP Cockpit"
         subtitle="Live shop-floor view of every work-in-progress job, with one-tap stage actions."
         action={
-          <Link href="/work-orders/new" className="btn-primary">
-            <Icon name="plus" size={16} />
-            New Work Order
-          </Link>
+          canCreateWorkOrder(role) ? (
+            <Link href="/work-orders/new" className="btn-primary">
+              <Icon name="plus" size={16} />
+              New Work Order
+            </Link>
+          ) : undefined
         }
       />
 

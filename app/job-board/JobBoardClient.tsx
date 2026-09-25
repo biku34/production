@@ -19,6 +19,7 @@ import {
   type Role,
   type WoStatus,
 } from "@/lib/domain";
+import { canCreateWorkOrder } from "@/lib/access";
 import { JobBoardTabs } from "./JobBoardTabs";
 import {
   type JobWo,
@@ -100,10 +101,12 @@ export default function JobBoardClient({ initial }: { initial: JobWo[] | null })
         title="Production Job Board"
         subtitle="One row per in-flight work order. Track every job across the fabric production lifecycle."
         action={
-          <Link href="/work-orders/new" className="btn-primary">
-            <Icon name="plus" size={16} />
-            New Work Order
-          </Link>
+          canCreateWorkOrder(role) ? (
+            <Link href="/work-orders/new" className="btn-primary">
+              <Icon name="plus" size={16} />
+              New Work Order
+            </Link>
+          ) : undefined
         }
       />
 
