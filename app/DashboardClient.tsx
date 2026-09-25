@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Icon } from "@/components/Icon";
 import { useRole } from "@/components/RoleContext";
 import { canCreateWorkOrder } from "@/lib/access";
-import { Donut, BarList, StackBar, LegendRow, type Slice } from "@/components/charts";
+import { Donut, BarList, StackBar, LegendRow, Pie, Scatter, type Slice } from "@/components/charts";
 import {
   WO_STATUSES,
   WO_STATUS_LABELS,
@@ -32,7 +32,7 @@ export interface Dashboard {
   };
   byStatus: Record<string, number>;
   byProduct: { name: string; count: number; meters: number }[];
-  byCustomer: { name: string; count: number }[];
+  byCustomer: { name: string; count: number; meters: number }[];
   byPriority: { priority: string; count: number }[];
   dueBuckets: { bucket: string; count: number }[];
   qc?: { grades: { grade: string; count: number }[]; inspectedMeters: number; rejectRate: number; topDefects: { reason: string; qty: number }[] };
@@ -113,13 +113,14 @@ function Body({ data }: { data: Dashboard }) {
             />
           )}
         </Card>
-        <Card title="Top customers" hint={`${data.byCustomer.length} customers`}>
+        <Card title="Top customers" hint="orders vs meters">
           {data.byCustomer.length === 0 ? (
             <Empty />
           ) : (
-            <RankedList
-              items={data.byCustomer.map((c) => ({ label: c.name, value: c.count }))}
-              color="#3b82f6"
+            <Scatter
+              points={data.byCustomer.map((c, i) => ({ label: c.name, x: c.count, y: c.meters, color: PALETTE[i % PALETTE.length] }))}
+              xLabel="Orders"
+              yLabel="Meters"
             />
           )}
         </Card>
@@ -226,40 +227,6 @@ function ManagerExtras({
   );
 }
 
-/** Ranked horizontal list with position numbers + thin bars (distinct from BarList). */
-function RankedList({
-  items,
-  color = "#1c6f63",
-}: {
-  items: { label: string; value: number }[];
-  color?: string;
-}) {
-  const max = Math.max(1, ...items.map((i) => i.value));
-  return (
-    <div className="space-y-2.5">
-      {items.map((it, i) => (
-        <div key={it.label} className="flex items-center gap-3">
-          <span className="w-5 shrink-0 text-right text-xs font-semibold tabular-nums text-ink-400">
-            {i + 1}
-          </span>
-          <span className="w-28 shrink-0 truncate text-sm text-ink-800 sm:w-40">
-            {it.label}
-          </span>
-          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-ink-100">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${(it.value / max) * 100}%`, backgroundColor: color }}
-            />
-          </div>
-          <span className="w-8 shrink-0 text-right text-sm font-medium tabular-nums text-ink-900">
-            {it.value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ------------------------------ role-specific ----------------------------- */
 
 function RoleTile({ data }: { data: Dashboard }) {
@@ -325,13 +292,18 @@ function Spotlight({ data }: { data: Dashboard }) {
       <Card title="Machine load & loss" hint="your production stage">
         {data.supervisor.machineLoad.length === 0 ? <Empty text="No production entries yet." /> : (
           <div className="space-y-4">
-            <BarList data={data.supervisor.machineLoad.map((m, i) => ({ label: m.machine, value: m.entries, color: PALETTE[i % PALETTE.length] }))} />
-            {data.supervisor.lossByStage.length > 0 && (
-              <div>
-                <div className="mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Avg loss by stage</div>
-                <BarList data={data.supervisor.lossByStage.map((l) => ({ label: STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] || l.stage, value: l.avgLossPct, color: l.flagged ? "#dc2626" : "#1c6f63" }))} valueSuffix="%" />
-              </div>
-            )}
+            {(() => {
+              const loadSlices: Slice[] = data.supervisor!.machineLoad.map((m, i) => ({ label: m.machine, value: m.entries, color: PALETTE[i % PALETTE.length] }));
+              const lossSlices: Slice[] = data.supervisor!.lossByStage.map((l) => ({ label: STAGE_LABELS[l.stage as keyof typeof STAGE_LABELS] || l.stage, value: l.avgLossPct, color: l.flagged ? "#dc2626" : "#1c6f63" }));
+              return (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <PieBlock title="Machine load" subtitle="entries per machine" slices={loadSlices} />
+                  {lossSlices.length > 0 && (
+                    <PieBlock title="Loss by stage" subtitle="avg %" slices={lossSlices} valueSuffix="%" />
+                  )}
+                </div>
+              );
+            })()}
             {data.jobwork && (
               <div className="grid grid-cols-3 gap-3">
                 <MiniStat label="Job-work total" value={data.jobwork.total} color="#8b5cf6" />
@@ -435,6 +407,38 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
         {hint && <span className="text-xs text-ink-400">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+/** A pie chart with a heading and a legend list beside it. */
+function PieBlock({
+  title,
+  subtitle,
+  slices,
+  valueSuffix = "",
+}: {
+  title: string;
+  subtitle?: string;
+  slices: Slice[];
+  valueSuffix?: string;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-ink-500">{title}</div>
+        {subtitle && <div className="text-[11px] text-ink-400">{subtitle}</div>}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="shrink-0">
+          <Pie data={slices} size={116} />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          {slices.map((s) => (
+            <LegendRow key={s.label} color={s.color} label={s.label} value={`${s.value}${valueSuffix}`} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

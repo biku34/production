@@ -150,7 +150,7 @@ const cDashboard = (role: Role, ownerName: string | null, stage: Stage | null) =
     for (const s of WO_STATUSES) byStatus[s] = 0;
     let overdue = 0, today = 0, tomorrow = 0, onTrack = 0, meters = 0, active = 0;
     const prodMap = new Map<string, { count: number; meters: number }>();
-    const custMap = new Map<string, number>();
+    const custMap = new Map<string, { count: number; meters: number }>();
     const prioMap = new Map<string, number>();
     for (const w of wos) {
       byStatus[w.status] = (byStatus[w.status] || 0) + 1;
@@ -165,7 +165,8 @@ const cDashboard = (role: Role, ownerName: string | null, stage: Stage | null) =
       }
       const pm = prodMap.get(w.productName) || { count: 0, meters: 0 };
       pm.count++; pm.meters += w.targetQty || 0; prodMap.set(w.productName, pm);
-      custMap.set(w.customerRef, (custMap.get(w.customerRef) || 0) + 1);
+      const cm = custMap.get(w.customerRef) || { count: 0, meters: 0 };
+      cm.count++; cm.meters += w.targetQty || 0; custMap.set(w.customerRef, cm);
       prioMap.set(w.priority, (prioMap.get(w.priority) || 0) + 1);
     }
 
@@ -173,8 +174,8 @@ const cDashboard = (role: Role, ownerName: string | null, stage: Stage | null) =
       .map(([name, v]) => ({ name, count: v.count, meters: v.meters }))
       .sort((a, b) => b.count - a.count).slice(0, 6);
     const byCustomer = [...custMap]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count).slice(0, 6);
+      .map(([name, v]) => ({ name, count: v.count, meters: v.meters }))
+      .sort((a, b) => b.count - a.count).slice(0, 8);
     const byPriority = [...prioMap].map(([priority, count]) => ({ priority, count }));
     const dueBuckets = [
       { bucket: "Overdue", count: overdue },
