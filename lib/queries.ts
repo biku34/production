@@ -108,9 +108,12 @@ export const getWorkOrderDetail = (id: string) =>
  * block adds the metrics that matter to that role (QC grades, packed rolls,
  * machine load, material issues, or the full management view).
  */
-const cDashboard = readCache(async (role: Role) => {
+const cDashboard = readCache(async (role: Role, ownerName: string | null) => {
     const scope = ROLE_STATUS_SCOPE[role];
-    const woFilter = scope ? { status: { $in: scope } } : {};
+    const woFilter: Record<string, unknown> = scope ? { status: { $in: scope } } : {};
+    // "Assigned owner" scope: a planner/manager sees only the WOs assigned to
+    // them (their own book of work), on top of any role status scope.
+    if (ownerName) woFilter.assignedName = ownerName;
     const wos = await WorkOrder.find(woFilter).sort({ updatedAt: -1 }).lean<any[]>();
     const ids = wos.map((w) => w._id);
 
@@ -263,9 +266,20 @@ export const getDashboard = () =>
   safe(async () => {
     const session = await getSession();
     if (!session) return null;
-    const data = await cDashboard(session.role);
-    // Inject the per-user greeting name outside the (role-keyed) cache.
-    return data ? { ...data, name: session.name } : null;
+    // Planner/Manager dashboards are scoped to the WOs assigned to that person
+    // ("their" orders); admin keeps full oversight; shop-floor keep stage scope.
+    const ownerName = session.role === "ProductionPlanner" ? session.name : null;
+    const data = await cDashboard(session.role, ownerName);
+    if (!data) return null;
+    // Inject per-user fields outside the (role-keyed) cache. When owner-scoped,
+    // relabel so the dashboard reads as "your" orders rather than "all".
+    return {
+      ...data,
+      name: session.name,
+      ...(ownerName
+        ? { scopeBlurb: "Work orders assigned to you", unrestricted: false }
+        : {}),
+    };
   });
 
 const cWipReport = readCache(async () => {
